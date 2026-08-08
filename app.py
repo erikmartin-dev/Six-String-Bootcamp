@@ -1,9 +1,5 @@
 
 
-# ============================================
-# SIX STRING BOOT CAMP - Complete App
-# ============================================
-
 try:
     st.set_page_config(
         page_title="Six String Boot Camp",
@@ -11,12 +7,9 @@ try:
         layout="wide",
         initial_sidebar_state="collapsed"
     )
-except Exception:
-    pass
-
-# ============================================
+except 
 # CUSTOM CSS
-# ============================================
+# 
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
@@ -180,7 +173,7 @@ st.markdown("""
 
 # ============================================
 # SESSION STATE
-# ============================================
+# 
 def init_session_state():
     defaults = {
         'user_progress': {'lessons_completed': [], 'current_lesson': 0, 'streak_days': 0, 'total_practice_minutes': 0},
@@ -196,7 +189,7 @@ init_session_state()
 
 # ============================================
 # SVG FRETBOARD RENDERER
-# ============================================
+# 
 def render_fretboard(highlight_notes=None, title=""):
     if highlight_notes is None:
         highlight_notes = []
@@ -272,7 +265,7 @@ def render_fretboard(highlight_notes=None, title=""):
 
 # ============================================
 # DATA
-# ============================================
+# 
 CHORD_SHAPES = {
     "C Major": {
         "ascii": "e|--0--|\nB|--1--|\nG|--0--|\nD|--2--|\nA|--3--|\nE|--x--|",
@@ -442,7 +435,7 @@ CURRICULUM = [
 
 # ============================================
 # HEADER
-# ============================================
+# 
 st.markdown("""
 <div class="main-header">
     <h1>🎸 Six String Boot Camp</h1>
@@ -450,9 +443,9 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ============================================
+# 
 # SERGEANT MARTIN
-# ============================================
+#
 if not st.session_state.sergeant_intro_seen:
     st.markdown("""
     <div class="sergeant-box">
@@ -468,18 +461,11 @@ if not st.session_state.sergeant_intro_seen:
     """, unsafe_allow_html=True)
     if st.button("🫡 Roger That, Sergeant!", key="dismiss_sergeant", use_container_width=True):
         st.session_state.sergeant_intro_seen = True
-        st.rerun()
+        
 
-# ============================================
-# NAVIGATION TABS
-# ============================================
 tab_home, tab_tools, tab_lessons, tab_songs, tab_progress = st.tabs([
     "🏠 Home", "🛠️ Free Tools", "📚 12-Week Course", "🎵 Song Library", "📊 My Progress"
-])
 
-# ============================================
-# TAB 1: HOME
-# ============================================
 with tab_home:
     col1, col2 = st.columns([2, 1])
 
@@ -519,11 +505,8 @@ with tab_home:
         """, unsafe_allow_html=True)
 
         if st.button("🚀 Start Mission", use_container_width=True):
-            st.info("Head to the **Free Tools** tab and fire up the tuner. Then come back for Week 1!")
+            st.info("Head to the **Free Tools** tab and fire up the tuner. Then come back for Week 
 
-# ============================================
-# TAB 2: FREE TOOLS
-# ============================================
 with tab_tools:
     st.subheader("🛠️ Free Tools — Always Available")
     st.caption("These tools are 100% free. No account required. No limits. No ads. Ever.")
@@ -802,7 +785,6 @@ with tab_songs:
 
 # ============================================
 # TAB 5: PROGRESS TRACKING
-# ============================================
 with tab_progress:
     st.subheader("📊 Your Progress")
     st.caption("Track your journey. Every minute counts.")
@@ -892,7 +874,7 @@ with tab_progress:
 
 # ============================================
 # FOOTER
-# ============================================
+
 st.markdown("---")
 st.markdown("""
 <div style="text-align: center; color: #555; padding: 2rem 0 1rem 0;">
