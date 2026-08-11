@@ -17,3 +17,8 @@ soundfile==0.12.1
 pyaudio==0.2.13
 plotly==5.17.0
 web3==6.11.0
+streamlit
+numpy
+pandas
+pillow
+
