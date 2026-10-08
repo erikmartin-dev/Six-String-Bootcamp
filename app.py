@@ -231,24 +231,145 @@ BUILTIN_SONGS = [
 # Courses (draft curriculum — filled in properly in the curriculum session)
 # ----------------------------------------------------------------------------
 COURSES = [
-    ("Guitar Anatomy & Posture", 29, "Know every part of the guitar and hold it like a pro from day one."),
-    ("Tuning & String Care", 29, "Tune by ear and with a tuner; change strings without fear."),
-    ("First Chords: G, C, D, Em", 29, "The four chords behind a thousand songs."),
-    ("Strumming Foundations", 29, "Down, up, and the patterns that make songs move."),
-    ("The A Family: A, Am, E, Em, D", 29, "Five more essential shapes, clean every time."),
-    ("Clean Chord Changes", 29, "Kill the buzz and the pause between chords."),
-    ("Power Chords & Palm Muting", 29, "Your first taste of rock rhythm guitar."),
+    ("Your First Song", 29, "Every Rose Has Its Thorn — G, C, D, Em. A real song in lesson one. Show someone tonight."),
+    ("Tuning, Fretboard & Ears", 29, "Tune by ear, map the fretboard, learn octaves, train your ears with the voice-matching drill."),
+    ("Finger Exercises + Pentatonic Position 1", 29, "The 1-2-3-4 drill, then your first pentatonic box."),
+    ("Three-Chord Songbook + Position 2", 29, "More songs in the pocket, second pentatonic position."),
+    ("Strumming That Sings + Position 3", 29, "Patterns that make it sound like the record."),
+    ("The A Family & Minor Chords + Position 4", 29, "Sad songs, more colors, fourth box."),
+    ("Clean Chord Changes + Position 5", 29, "Kill the pause. All five boxes on the board."),
+    ("Power Chords + Connecting the Boxes", 39, "Rock rhythm and your first real improv."),
     ("Barre Chords: E-Shape", 39, "One shape, twelve chords. The fretboard opens up."),
-    ("Barre Chords: A-Shape", 39, "The second barre family — no more capo crutch."),
-    ("The Pentatonic Box", 39, "The five-note scale behind every great solo."),
-    ("Rhythm & Timing Mastery", 39, "Play in the pocket with the metronome as your drummer."),
-    ("Your First 10 Songs (Capstone)", 49, "Put it all together: ten full songs, start to finish."),
+    ("Barre Chords: A-Shape", 39, "The second barre family — full fretboard freedom."),
+    ("Soloing With Purpose", 39, "Phrasing and intent across all five positions."),
+    ("Music Theory + Your First 10 Songs", 49, "Sharps/flats, majors/minors, chromatic scale, circle of fifths, capo — then the capstone setlist."),
 ]
 MEMBERSHIP = [
     ("Monthly", 19, "All 12 courses, new lessons weekly, cancel anytime."),
     ("Annual", 149, "Everything in Monthly, two months free, priority Q&A."),
     ("Lifetime", 399, "Pay once. Every course, every future update, forever."),
 ]
+
+# ----------------------------------------------------------------------------
+# Lesson notes — Erik's own teaching, dictated Oct 2026. Shown as previews.
+# ----------------------------------------------------------------------------
+LESSON_CONTENT = {
+    1: [
+        ("Welcome to Six String Bootcamp",
+         "Before we go any further, I want to congratulate you and encourage you \u2014 and I want "
+         "you to see some things I've set up that might catch your attention.\n\n"
+         "I've got badges for you. When you pass these practice lessons, you get a badge, and it'll "
+         "display automatically on your Six String Bootcamp social media \u2014 live, visible for "
+         "everyone to see your progress.\n\n"
+         "And this is not your normal social media site. This is for my students. Once you enroll, "
+         "you're automatically a member. You get to choose whether your stuff is public or private "
+         "\u2014 hopefully public \u2014 so everyone can see your badges. You can communicate with "
+         "other students, see how they're enjoying learning guitar, share stuff, help each other out.\n\n"
+         "And once you pass the practices, we give you an NFT. If you're not familiar with blockchain "
+         "or cryptocurrency \u2014 an NFT is a special way to catalog your experience and your "
+         "achievements. In my opinion, it becomes a piece of art on the blockchain.\n\n"
+         "So welcome to the new world \u2014 with me, you, and AI. We can get a lot accomplished. "
+         "And hopefully, you'll become a master guitarist."),
+        ("How you'll be graded",
+         "As you go through Six String Bootcamp, you'll be doing practices, and my AI instructor is "
+         "going to grade you. Here's what it's grading: are you chording properly? Is every finger "
+         "pressing every string it's supposed to press \u2014 and is every string sounding the way "
+         "it's supposed to sound?\n\n"
+         "Take the E minor I just taught you. Two fingers touching two strings \u2014 but all six "
+         "strings ring. That's what we're looking for.\n\n"
+         "And listen: we don't want you playing hard. Don't hit the strings. Just press the two "
+         "strings. Keep your palm and your wrist completely away from the fretboard \u2014 not "
+         "touching any other string. Start from the sixth string on top and strum straight down. We "
+         "should hear every string ring open except the two you pressed. That's what you'll be graded "
+         "on \u2014 and that's what's going to move you to the next lesson.\n\n"
+         "When you come back for the next lesson, you'll go to the practice window. You'll practice "
+         "what you learned \u2014 or whatever the AI tells you to. You don't have to run the whole "
+         "session. Just the hot spots, so we can see you are indeed practicing, and you are indeed "
+         "getting it."),
+        ("Grabbing the chord",
+         "You've seen it on TV, maybe in person \u2014 guitar players twisting around, moving their "
+         "body, ducking their head. A lot of that is not for show. You have to move your wrist, move "
+         "your elbow \u2014 stick it out, tuck it in \u2014 hump your back, move your head, move "
+         "your other arm. I call it grabbing the chord.\n\n"
+         "Here's why: to fret a chord clean, you have to touch every string you're supposed to touch, "
+         "and nothing you're not supposed to. If your palm hits a string, it'll muffle it or make it "
+         "ring wrong. So you move your body around until your fingers can land properly \u2014 and "
+         "by properly, I mean the tip of your finger, exactly on the string. Not the whole finger. "
+         "The tip. And press hard.\n\n"
+         "It's going to hurt at first. It's going to feel like the worst thing in the world. That's "
+         "normal.\n\n"
+         "As a beginner, you are not supposed to know how to make these chords yet. Your brain and "
+         "your fingers have never done this in your life. It takes a while to build that brain-hand "
+         "coordination. So don't be discouraged when you can't chord something I teach you. Just do "
+         "what I'm telling you, keep practicing, and it'll come together. I promise \u2014 but you "
+         "have to get through the pain. It takes a lot of practice to play guitar.\n\n"
+         "I wish I could take my brain, pluck it out, and hand it to you so it would just work. I've "
+         "been playing 40 years and I'm still learning. I'm not a master \u2014 I'm someone who "
+         "wants to share what I've learned. And I know these are the proper fundamentals, because "
+         "I've studied it, researched it, and put it to bed. This is the fundamentals. Do what I say, "
+         "and you will get it, and you will be able to play.\n\n"
+         "So practice, practice, practice."),
+    ],
+    2: [
+        ("Things you'll hear a lot",
+         "Before we play a note, let's get our words straight \u2014 because you're going to hear "
+         "these every single lesson.\n\n"
+         "The guitar has frets, fingers, a nut, a bridge, a headstock, and tuning knobs. The nut is "
+         "at the top \u2014 that's where the fretboard starts. The bridge is at the bottom \u2014 "
+         "that's where the strings come to an end. The headstock is the head of the guitar, and "
+         "that's where the tuning knobs live.\n\n"
+         "Now the strings. We count from the bottom up. String one is the high E \u2014 the "
+         "skinniest string, closest to the floor. String two is B, string three is G, string four is "
+         "D, string five is A, and string six at the very top is the low E \u2014 the fattest one. "
+         "Notice something? The first and the sixth string are both E when you play them open. Same "
+         "note, different octave. Remember that \u2014 it matters later.\n\n"
+         "Frets start at the top near the nut. This fret is one, then two, three, four, five, six, "
+         "seven, eight, nine, ten, eleven, twelve \u2014 and so on down the neck.\n\n"
+         "Your hand: you've got your pointer finger \u2014 that's your first finger \u2014 your "
+         "bird finger, your ring finger, your pinky, and your thumb. So when I say \u201cpointer on "
+         "the fifth string, second fret,\u201d you know exactly what I mean.\n\n"
+         "Let's prove it. Pointer \u2014 first finger \u2014 on the fifth string, second fret. "
+         "Bird finger on the fourth string, second fret. Strum it. That's an E minor open chord. You "
+         "just played your first chord."),
+        ("Where your fingers actually go",
+         "One thing to focus on right from the start: finger placement.\n\n"
+         "I mentioned frets. Look at the guitar neck \u2014 you'll see metal bars. Those are the "
+         "fret bars. What's in between them is the actual fret \u2014 the space.\n\n"
+         "So if I say \u201cpointer finger and bird finger, on strings five and four, in fret "
+         "two\u201d \u2014 your fingers go inside of fret two. Not on the fret bar, not to the "
+         "left or right of it \u2014 in the middle, in between the two bars. The first fret is the "
+         "space right beside the nut. The next space over is the second fret \u2014 that space "
+         "between the first two fret bars. That's where your fingers go.\n\n"
+         "Anytime I tell you to place a finger somewhere, even if it seems awkward \u2014 and it "
+         "will, I promise you \u2014 it has to go there. Fix your body, fix your hands, and make "
+         "those fingers go into that position."),
+    ],
+    3: [
+        ("The 1-2-3-4 exercise",
+         "While we're on the frets, here's the finger exercise I want you to learn.\n\n"
+         "You've got four fingers. Place all four on any four frets \u2014 we're starting on the "
+         "sixth string. That's your exercise. Take the tips of your fingers and go one, two, three, "
+         "four \u2014 then back: four, three, two, one. One finger per fret, pressing each one "
+         "clean.\n\n"
+         "Wherever you start, that's your one through four. Fret one, fret five, fret ten \u2014 "
+         "doesn't matter. Say you start on the tenth fret: tenth is your one, eleventh is your two, "
+         "twelfth is your three, thirteenth is your four. Then back: thirteen, twelve, eleven, ten. "
+         "Down and back, down and back.\n\n"
+         "Once you can run the sixth string fluently \u2014 one-two-three-four, four-three-two-one, "
+         "over and over \u2014 then when you feel comfortable, like you're getting it: go one, two, "
+         "three, four, and drop down to the fifth string. One, two, three, four. And so on, string by "
+         "string."),
+        ("When you're ready",
+         "While you're doing these exercises \u2014 and doing them right \u2014 take as much time "
+         "as you need. You don't have to go fast. Just one, two, three, four, four, three, two, one. "
+         "And before you know it, you'll be blazing through it.\n\n"
+         "Here's your benchmark: sixth string, one-two-three-four, all the way down to the first "
+         "string, one-two-three-four \u2014 then back up to the sixth string, four-three-two-one on "
+         "every string. Once you're at that level \u2014 and it should come pretty quick if you're "
+         "practicing \u2014 then we get to go above and beyond.\n\n"
+         "We're going to have some fun with the pentatonic scale."),
+    ],
+}
 
 # ----------------------------------------------------------------------------
 # Chord diagrams
@@ -524,12 +645,118 @@ tBtn.addEventListener('click', async ()=>{
 """
 
 
+EAR_TRAINER_HTML = """
+<div style="text-align:center;padding:8px;">
+  <div style="color:#a0a0a0;font-size:0.9rem;margin-bottom:6px;">Hear it &nbsp;&rarr;&nbsp; sing it back &nbsp;&rarr;&nbsp; get scored</div>
+  <div id="eTarget" style="font-size:2.4rem;font-weight:700;color:#e94560;">&ndash;</div>
+  <div id="eHeard" style="font-size:1.05rem;color:#a0a0a0;min-height:1.7em;">press PLAY NOTE, then sing</div>
+  <div id="eVerdict" style="font-size:1.35rem;font-weight:700;min-height:1.9em;"></div>
+  <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;">
+    <button id="ePlay" style="background:#e94560;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#9654; PLAY NOTE</button>
+    <button id="eNew" style="background:#16213e;color:#f0f0f5;border:1px solid rgba(233,69,96,.4);border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#127922; NEW NOTE</button>
+    <button id="eMic" style="background:#16213e;color:#f0f0f5;border:1px solid rgba(233,69,96,.4);border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#127908; MIC: OFF</button>
+  </div>
+  <div id="eStats" style="color:#5a5a72;font-size:0.85rem;margin-top:8px;">rounds: 0 &middot; nailed: 0</div>
+  <div style="color:#5a5a72;font-size:0.78rem;margin-top:4px;">needs microphone access &middot; works on localhost / HTTPS</div>
+</div>
+<script>
+const ENOTES=[["A3",220.00],["C4",261.63],["D4",293.66],["E4",329.63],["G4",392.00],["A4",440.00]];
+let eTarget=null, eMicOn=false, eRounds=0, eNailed=0, eScored=false, eStream=null, eCtx=null;
+const eT=document.getElementById('eTarget'), eH=document.getElementById('eHeard'),
+      eV=document.getElementById('eVerdict'), eS=document.getElementById('eStats');
+function eAutoCorrelate(buf,sr){
+  let SIZE=buf.length, rms=0, i;
+  for(i=0;i<SIZE;i++) rms+=buf[i]*buf[i];
+  if(Math.sqrt(rms/SIZE)<0.015) return -1;
+  let r1=0, r2=SIZE-1;
+  const b=buf.slice(0);
+  for(i=0;i<SIZE/2;i++) if(Math.abs(b[i])<0.2){b[i]=0;r1=i;}
+  for(i=1;i<SIZE/2;i++) if(Math.abs(b[SIZE-i])<0.2){b[SIZE-i]=0;r2=SIZE-i;}
+  const b2=b.slice(r1,r2); SIZE=b2.length;
+  const c=new Array(SIZE).fill(0);
+  for(i=0;i<SIZE;i++) for(let j=0;j<SIZE-i;j++) c[i]+=b2[j]*b2[j+i];
+  let d=0; while(d<SIZE-1 && c[d]>c[d+1]) d++;
+  let maxv=-1, maxp=-1;
+  for(i=d;i<SIZE;i++) if(c[i]>maxv){maxv=c[i];maxp=i;}
+  let T0=maxp;
+  if(T0>0&&T0<SIZE-1){
+    const x1=c[T0-1],x2=c[T0],x3=c[T0+1],aa=(x1+x3-2*x2)/2,bb=(x3-x1)/2;
+    if(aa) T0=T0-bb/(2*aa);
+  }
+  return sr/T0;
+}
+function ePick(){
+  eTarget=ENOTES[Math.floor(Math.random()*ENOTES.length)];
+  eScored=false;
+  eT.textContent=eTarget[0];
+  eV.textContent=''; eV.style.color='';
+  eH.textContent='sing it back\u2026';
+}
+document.getElementById('eNew').addEventListener('click', ePick);
+document.getElementById('ePlay').addEventListener('click', ()=>{
+  if(!eTarget) ePick();
+  try{
+    const AC=window.AudioContext||window.webkitAudioContext;
+    const ctx=new AC(), o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=eTarget[1];
+    const tm=ctx.currentTime;
+    g.gain.setValueAtTime(0.0001,tm);
+    g.gain.exponentialRampToValueAtTime(0.5,tm+0.05);
+    g.gain.exponentialRampToValueAtTime(0.0001,tm+1.4);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(tm); o.stop(tm+1.5);
+    eH.textContent='listen\u2026 now sing it back';
+  }catch(err){ eH.textContent='audio blocked by browser'; }
+});
+document.getElementById('eMic').addEventListener('click', async (ev)=>{
+  const btn=ev.currentTarget;
+  if(eMicOn){ eMicOn=false; btn.innerHTML='&#127908; MIC: OFF'; btn.style.background='#16213e'; btn.style.color='#f0f0f5';
+    if(eStream){eStream.getTracks().forEach(x=>x.stop());} return; }
+  try{
+    eStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    eCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const src=eCtx.createMediaStreamSource(eStream), an=eCtx.createAnalyser();
+    an.fftSize=2048; src.connect(an);
+    const buf=new Float32Array(an.fftSize);
+    eMicOn=true; btn.innerHTML='&#127908; MIC: ON'; btn.style.background='#4ade80'; btn.style.color='#0d0d1a';
+    if(!eTarget) ePick();
+    (function tick(){
+      if(!eMicOn) return;
+      an.getFloatTimeDomainData(buf);
+      const f=eAutoCorrelate(buf,eCtx.sampleRate);
+      if(f>60&&f<1000&&eTarget){
+        const cents=Math.round(1200*Math.log2(f/eTarget[1]));
+        const dir=cents>0?'sharp (too high)':(cents<0?'flat (too low)':'in tune');
+        eH.textContent='you: '+Math.round(f)+' Hz \u00b7 '+(cents>0?'+':'')+cents+'\u00a2 '+dir;
+        const a=Math.abs(cents);
+        if(a<=20){
+          eV.textContent='\uD83C\uDF96\uFE0F NAILED IT!'; eV.style.color='#4ade80';
+          if(!eScored){ eScored=true; eRounds++; eNailed++; eS.textContent='rounds: '+eRounds+' \u00b7 nailed: '+eNailed; }
+        } else if(a<=50){
+          eV.textContent='close \u2014 a touch '+(cents>0?'lower':'higher'); eV.style.color='#fbbf24';
+        } else {
+          eV.textContent='keep going \u2014 listen again'; eV.style.color='#e94560';
+        }
+      }
+      requestAnimationFrame(tick);
+    })();
+  }catch(err){ eH.textContent='microphone blocked \u2014 allow access and retry'; }
+});
+ePick();
+</script>
+"""
+
+
 def metronome():
     components.html(METRONOME_HTML, height=300, scrolling=False)
 
 
 def tuner():
     components.html(TUNER_HTML, height=380, scrolling=False)
+
+
+def ear_trainer():
+    components.html(EAR_TRAINER_HTML, height=450, scrolling=False)
 
 
 def fretboard_lab():
@@ -647,7 +874,9 @@ def page_home():
         ("📚", "Learn", "Fretboard lab and the chord wall."),
         ("🎓", "Courses", "Twelve paid courses, fundamentals first."),
         ("💳", "Membership", "One pass, everything included."),
-        ("🧰", "Tools", "Metronome and tuner, free forever."),
+        ("🧰", "Tools", "Metronome, tuner, and ear trainer — free forever."),
+        ("🎸", "Gear", "The starter guitar Erik recommends, and what's next."),
+        ("🏆", "Collection", "Your badges and NFTs. Proof of progress."),
     ]
     cols = st.columns(2)
     for i, (icon, name, desc) in enumerate(grid):
@@ -794,7 +1023,7 @@ def page_learn():
 
 def page_courses():
     st.markdown('<div class="hero"><h1>🎓 COURSES</h1>'
-                '<p>Twelve courses. Fundamentals first. <span class="badge badge-draft">DRAFT CURRICULUM</span></p></div>',
+                '<p>Twelve lessons. Song first. Play something tonight.</p></div>',
                 unsafe_allow_html=True)
     sgt_card("<b>Twelve courses stand between you and the guitarist you were "
              "born to be.</b> Take them in order, recruit — no skipping leg day.")
@@ -809,7 +1038,13 @@ def page_courses():
         elif st.button(f"Enroll — ${price}", key=f"enroll_{idx}"):
             mine.append(name)
             st.success(f"“{name}” is on your list. Checkout opens at launch.")
-    st.caption("Full lesson content for each course is being written now.")
+        notes = LESSON_CONTENT.get(idx + 1)
+        if notes:
+            with st.expander("📖 Erik's lesson notes (preview)"):
+                for title, body in notes:
+                    st.markdown(f"**{title}**")
+                    st.markdown(body)
+    st.caption("Lesson notes are Erik's own teaching — full video lessons + AI check-ins at launch.")
 
 
 def page_membership():
@@ -833,6 +1068,47 @@ def page_membership():
                 st.rerun()
 
 
+GEAR_URL = "https://www.Guitarcenter.com/Cort/AD810-OP-Dreadnought-Acoustic-Guitar-1500000270316.gc"
+
+
+def page_gear():
+    st.markdown('<div class="hero"><h1>🎸 GEAR I RECOMMEND</h1>'
+                '<p>What Erik actually tells beginners to buy.</p></div>',
+                unsafe_allow_html=True)
+    sgt_card("<b>A bad guitar fights you.</b> This one doesn't. A hundred bucks, "
+             "gig bag, picks — recruit, that's the best money in this course.")
+    st.markdown("""<div class="course-card"><h4>Cort AD810 Dreadnought Pack</h4>
+    <div>Spruce top, mahogany body, open-pore finish. Sounds great, very playable — """
+    """the starter guitar Erik recommends to every beginner. Pack includes gig bag, picks, and strap.</div>
+    <div style="margin-top:0.4rem;"><span class="badge badge-free">ERIK'S PICK</span>
+    <span class="course-price">~$100</span></div></div>""", unsafe_allow_html=True)
+    st.markdown(f"""<a href="{GEAR_URL}" target="_blank" rel="noopener" style="display:inline-block;
+    background:#e94560;color:#fff;font-weight:700;padding:12px 28px;border-radius:10px;
+    text-decoration:none;">&#128269; Check today's price</a>""", unsafe_allow_html=True)
+    st.caption("Affiliate links activate at launch — then every guitar bought here supports the school.")
+    st.markdown("**Lesson 1 needs:** just the guitar. Capo and extras come later — saved for lesson 12 on purpose.")
+
+
+def page_collection():
+    st.markdown('<div class="hero"><h1>🏆 MY COLLECTION</h1>'
+                '<p>Badges for the wall. NFTs for forever.</p></div>',
+                unsafe_allow_html=True)
+    sgt_card("<b>Twelve lessons, twelve trophies.</b> Pass the AI check-in, take the badge. "
+             "Your wall of proof starts here.")
+    st.markdown("Pass a lesson's AI practice check and two things happen: a **badge** appears on your "
+                "community wall for everyone to see, and an **NFT** — a piece of art on the blockchain "
+                "cataloging your achievement — lands in your collection. No wallets to set up, no crypto "
+                "to buy. It just shows up.")
+    cols = st.columns(4)
+    for i in range(12):
+        with cols[i % 4]:
+            st.markdown(f"""<div class="course-card" style="text-align:center;opacity:0.55;">
+            <div style="font-size:2rem;">🔒</div><div>Lesson {i + 1}</div>
+            <div style="font-size:0.75rem;color:#5a5a72;">locked</div></div>""",
+                        unsafe_allow_html=True)
+    st.caption("Badges + NFT collection unlock at launch.")
+
+
 def page_tools():
     st.markdown('<div class="hero"><h1>🧰 TOOLS</h1>'
                 '<p>Free forever. Tune up, lock in.</p></div>',
@@ -848,6 +1124,12 @@ def page_tools():
                     unsafe_allow_html=True)
         tuner()
         st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tool-card"><h3 style="color:#e94560;">👂 Ear Trainer</h3>'
+                '<p style="color:#a0a0a0;">Hear the note. Sing it back. Get scored. '
+                'Match your voice to the pitch — this is how ears are built.</p>',
+                unsafe_allow_html=True)
+    ear_trainer()
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ----------------------------------------------------------------------------
@@ -856,12 +1138,13 @@ def page_tools():
 NAV = [
     ("🏠", "Home"), ("🎵", "Songs"), ("🔍", "Find Songs"), ("💾", "Saved"),
     ("🎤", "Gigs"), ("📚", "Learn"), ("🎓", "Courses"), ("💳", "Membership"),
-    ("🧰", "Tools"),
+    ("🧰", "Tools"), ("🎸", "Gear"), ("🏆", "Collection"),
 ]
 PAGES = {
     "Home": page_home, "Songs": page_songs, "Find Songs": find_songs_page,
     "Saved": page_saved, "Gigs": page_gigs, "Learn": page_learn,
     "Courses": page_courses, "Membership": page_membership, "Tools": page_tools,
+    "Gear": page_gear, "Collection": page_collection,
 }
 
 if not sgt_intro():
@@ -871,9 +1154,9 @@ if "page" not in st.session_state:
     st.session_state["page"] = "Home"
 
 st.markdown('<div class="navbtn">', unsafe_allow_html=True)
-row1, row2 = st.columns(5), st.columns(4)
+row1, row2 = st.columns(6), st.columns(5)
 for i, (icon, name) in enumerate(NAV):
-    col = row1[i] if i < 5 else row2[i - 5]
+    col = row1[i] if i < 6 else row2[i - 6]
     active = st.session_state["page"] == name
     with col:
         if st.button(f"{icon} {name}", key=f"nav_{name}", use_container_width=True,
