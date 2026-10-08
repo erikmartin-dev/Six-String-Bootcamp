@@ -1,33 +1,57 @@
-
 # 🎸 Six-String Bootcamp
 
-## Table of Contents
-- [Features](#features)# 🛒 Automated E-Commerce Price & Stock Tracker
-
-A reliable, automated Python solution designed to monitor competitor product listings, extract live pricing, and instantly push structured alerts to business communications channels when market conditions change.
-
-## 🚀 Business Value
-Manual competitor monitoring is slow, prone to human error, and pulls your team away from growth tasks. This automation runs continuously in the background, ensuring your business instantly catches price drops, stock updates, or new promotions without a single second of manual browsing.
-
-## 🛠️ How It Works
-
-- [Getting Started](#getting-started)
-- [Project Structure](#project-structure)
-- [Tech Stack](#tech-stack)
-- [Contributing](#contributing)
-- [License](#license)
+An interactive app that teaches you the fundamentals of guitar. Chat with an
+AI tutor, tune up, browse songs, and keep time — then go deeper with
+structured courses.
 
 ## Features
 
-## Getting Started
+- 🤖 **AI guitar tutor** — a conversational agent that teaches guitar
+  fundamentals step by step
+- 🎛️ **Free chromatic tuner** — tune up right in the app
+- 🎵 **Song database** — browse songs to learn and practice
+- ⏱️ **Metronome** — keep steady time while you practice
+- 🎓 **12 structured courses** — buy once or join with a monthly membership
+
+## Tech stack
+
+- **App:** Python + Streamlit
+- **AI tutor:** Anthropic / Google Generative AI, ElevenLabs (voice)
+- **Audio:** Librosa, PyAudio
+- **Payments:** Stripe · **Backend:** Firebase
+
+## Getting started
 
 ### Prerequisites
-- Node.js 16+
-- [Other requirements]
+
+- Python 3.9+
+- A microphone (for the tuner)
 
 ### Installation
+
 ```bash
-git clone https://github.com/vektorcom/Six-String-Bootcamp.git
+git clone https://github.com/erikmartin-dev/Six-String-Bootcamp.git
 cd Six-String-Bootcamp
-npm install
-npm start
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+### Configuration
+
+The app needs API keys (AI provider, ElevenLabs, Stripe, Firebase).
+Put them in `.streamlit/secrets.toml` (local) or your hosting provider's
+secret manager. **Never commit API keys to the repo.**
+
+## Project structure
+
+```
+├── app.py                  # Main Streamlit app
+├── requirements.txt        # Python dependencies
+├── .streamlit/config.toml  # Streamlit configuration
+├── .devcontainer/          # Dev container setup
+└── .github/workflows/      # CI workflows
+```
+
+## License
+
+All rights reserved.
