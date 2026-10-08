@@ -1,0 +1,17 @@
+name: Probe Two
+
+on:
+  push:
+    branches: [main]
+    paths: ['mobile/**', '.github/workflows/android.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  debug-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo hello
