@@ -55,7 +55,6 @@ jobs:
       - uses: actions/setup-java@v4
         if: steps.signing.outputs.present == 'true'
         with: { distribution: temurin, java-version: 17 }
-        if: steps.signing.outputs.present == 'true'
       - run: npm ci
         if: steps.signing.outputs.present == 'true'
       - run: npx cap add android
