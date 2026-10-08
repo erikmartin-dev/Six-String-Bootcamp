@@ -1,0 +1,28 @@
+name: Probe Four
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release-aab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for signing secrets
+        id: signing
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "No signing secrets."
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          KEYSTORE_B64: ${{ secrets.KEYSTORE_BASE64 }}
+      - name: Build signed release bundle
+        if: steps.signing.outputs.present == 'true'
+        run: cd android && ./gradlew bundleRelease
+            -Pandroid.injected.signing.store.file=$PWD/upload.keystore
+            -Pandroid.injected.signing.store.password='${{ secrets.KEYSTORE_PASSWORD }}'
+            -Pandroid.injected.signing.key.alias='${{ secrets.KEY_ALIAS }}'
+            -Pandroid.injected.signing.key.password='${{ secrets.KEY_PASSWORD }}'
