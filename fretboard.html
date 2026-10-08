@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Six-String Bootcamp — Interactive Fretboard</title>
+<!--
+  Drop-in for the Streamlit app:
+      import streamlit.components.v1 as components
+      components.html(open("fretboard.html").read(), height=560, scrolling=False)
+  Or just open this file in any mobile/desktop browser — no build step, no dependencies.
+-->
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px;
+    background: #0f0f1e; color: #f0f0f5;
+    font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; color: #e94560; letter-spacing: -0.5px; }
+  p.hint { color: #a0a0b8; font-size: 0.9rem; margin: 0 0 12px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  button {
+    background: #16213e; color: #f0f0f5;
+    border: 1px solid rgba(233,69,96,.35); border-radius: 10px;
+    padding: 10px 14px; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; touch-action: manipulation;
+  }
+  button:active { background: #e94560; }
+  button.chord.active { background: #e94560; border-color: #e94560; }
+  button.toggle.on { background: #0f3460; border-color: #4aa8ff; }
+  .board-wrap {
+    background: linear-gradient(145deg, #16213e, #0f3460);
+    border: 1px solid rgba(233,69,96,.15);
+    border-radius: 16px; padding: 8px 4px;
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  svg { display: block; width: 100%; height: auto; }
+  #board text, #board circle { pointer-events: none; }
+  .hit { fill: transparent; cursor: pointer; }
+  .note-dot { fill: #e94560; opacity: 0; transition: opacity .08s; pointer-events: none; }
+  .note-dot.lit { opacity: 1; filter: drop-shadow(0 0 8px #e94560); }
+  .note-name { fill: #fff; font-size: 13px; font-weight: 700; text-anchor: middle;
+               pointer-events: none; opacity: 0; transition: opacity .08s; }
+  .note-name.lit { opacity: 1; }
+  .note-name.dim { opacity: .35; font-weight: 400; font-size: 11px; fill: #a0a0b8; }
+  .fret-num { fill: #5a5a72; font-size: 11px; text-anchor: middle; }
+  .string-label { fill: #a0a0b8; font-size: 14px; font-weight: 700; text-anchor: middle; }
+  .muted-x { fill: #e94560; font-size: 16px; font-weight: 700; text-anchor: middle; }
+  .now-playing {
+    margin-top: 10px; min-height: 1.6em; text-align: center;
+    font-size: 1.05rem; font-weight: 600; color: #e94560;
+  }
+</style>
+</head>
+<body>
+<h1>🎸 Interactive Fretboard</h1>
+<p class="hint">Tap any string to play it — the note lights up, Yousician-style. Or pick a chord to see its shape.</p>
+
+<div class="controls" id="chords"></div>
+<div class="controls">
+  <button class="toggle" id="namesToggle">Note names: off</button>
+  <button id="clearBtn">Clear</button>
+</div>
+
+<div class="board-wrap">
+  <svg id="board" viewBox="0 0 1200 380" aria-label="Interactive guitar fretboard"></svg>
+</div>
+<div class="now-playing" id="nowPlaying"></div>
+
+<script>
+// ---------- Music theory ----------
+const NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+// Strings top -> bottom (high E to low E), standard tuning
+const STRINGS = [
+  { label: 'e', midi: 64, w: 1.6 },
+  { label: 'B', midi: 59, w: 2.0 },
+  { label: 'G', midi: 55, w: 2.6 },
+  { label: 'D', midi: 50, w: 3.2 },
+  { label: 'A', midi: 45, w: 3.8 },
+  { label: 'E', midi: 40, w: 4.6 },
+];
+const FRETS = 12;
+const noteName = midi => NAMES[midi % 12];
+const freqOf = midi => 440 * Math.pow(2, (midi - 69) / 12);
+
+const CHORDS = {
+  'E':  [0, 0, 1, 2, 2, 0],
+  'Em': [0, 0, 0, 2, 2, 0],
+  'A':  [0, 2, 2, 2, 0, -1],
+  'Am': [0, 1, 2, 2, 0, -1],
+  'D':  [2, 3, 2, 0, -1, -1],
+  'G':  [3, 0, 0, 0, 2, 3],
+  'C':  [0, 1, 0, 2, 3, -1],
+};
+
+// ---------- Guitar-ish pluck synthesis (Karplus-Strong) ----------
+let actx = null;
+const pluckCache = {};
+function ensureAudio() {
+  if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+  if (actx.state === 'suspended') actx.resume();
+}
+function pluckBuffer(freq) {
+  const sr = actx.sampleRate, dur = 1.8, len = Math.floor(sr * dur);
+  const buf = actx.createBuffer(1, len, sr);
+  const data = buf.getChannelData(0);
+  const N = Math.max(2, Math.round(sr / freq));
+  const line = new Float32Array(N);
+  for (let i = 0; i < N; i++) line[i] = Math.random() * 2 - 1;
+  let idx = 0;
+  for (let n = 0; n < len; n++) {
+    const cur = line[idx];
+    line[idx] = 0.996 * 0.5 * (cur + line[(idx + 1) % N]);
+    data[n] = cur;
+    idx = (idx + 1) % N;
+  }
+  return buf;
+}
+function playMidi(midi, when = 0, vol = 0.5) {
+  ensureAudio();
+  const key = midi;
+  if (!pluckCache[key]) pluckCache[key] = pluckBuffer(freqOf(midi));
+  const t = actx.currentTime + when;
+  const src = actx.createBufferSource();
+  src.buffer = pluckCache[key];
+  const g = actx.createGain();
+  g.gain.setValueAtTime(vol, t);
+  src.connect(g); g.connect(actx.destination);
+  src.start(t);
+}
+
+// ---------- Fretboard rendering ----------
+const svg = document.getElementById('board');
+const NS = 'http://www.w3.org/2000/svg';
+const NUT_X = 110, FRET_W = 86, TOP_Y = 62, STR_SP = 46;
+const BOARD_R = NUT_X + FRETS * FRET_W; // 1142
+const el = (tag, attrs) => {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+};
+const stringY = i => TOP_Y + i * STR_SP;
+const fretCenterX = f => f === 0 ? (14 + NUT_X) / 2 : NUT_X + (f - 0.5) * FRET_W;
+
+// Wood background
+const grad = el('linearGradient', { id: 'wood', x1: 0, y1: 0, x2: 0, y2: 1 });
+grad.appendChild(el('stop', { offset: '0%', 'stop-color': '#4a3220' }));
+grad.appendChild(el('stop', { offset: '100%', 'stop-color': '#2e1f14' }));
+const defs = el('defs', {}); defs.appendChild(grad); svg.appendChild(defs);
+svg.appendChild(el('rect', { x: 8, y: TOP_Y - 34, width: BOARD_R - 2, height: 5 * STR_SP + 68, rx: 14, fill: 'url(#wood)', stroke: '#5a4028', 'stroke-width': 2 }));
+
+// Fret wires + numbers, nut
+for (let f = 0; f <= FRETS; f++) {
+  const x = NUT_X + f * FRET_W;
+  svg.appendChild(el('line', {
+    x1: x, y1: TOP_Y - 30, x2: x, y2: TOP_Y + 5 * STR_SP + 30,
+    stroke: f === 0 ? '#d8d8e0' : '#9a9aa8', 'stroke-width': f === 0 ? 7 : 3
+  }));
+  if (f > 0) svg.appendChild(el('text', { x: x - FRET_W / 2, y: TOP_Y - 42, class: 'fret-num' })).textContent = f;
+}
+// Position markers
+[3, 5, 7, 9].forEach(f => {
+  svg.appendChild(el('circle', { cx: fretCenterX(f), cy: TOP_Y + 2.5 * STR_SP, r: 7, fill: '#c9a86a', opacity: 0.85 }));
+});
+[fretCenterX(12) - 22, fretCenterX(12) + 22].forEach(cx => {
+  svg.appendChild(el('circle', { cx, cy: TOP_Y + 2.5 * STR_SP, r: 7, fill: '#c9a86a', opacity: 0.85 }));
+});
+
+// Strings, labels, hit zones, note dots
+const dots = {};   // "s,f" -> {dot, name}
+STRINGS.forEach((s, si) => {
+  const y = stringY(si);
+  svg.appendChild(el('line', { x1: 8, y1: y, x2: BOARD_R + 6, y2: y, stroke: '#e8e8f0', 'stroke-width': s.w, opacity: 0.9 }));
+  const lab = el('text', { x: 26, y: y + 5, class: 'string-label' });
+  lab.textContent = s.label; svg.appendChild(lab);
+  for (let f = 0; f <= FRETS; f++) {
+    const x1 = f === 0 ? 8 : NUT_X + (f - 1) * FRET_W;
+    const x2 = f === 0 ? NUT_X : NUT_X + f * FRET_W;
+    const cx = (x1 + x2) / 2;
+    const hit = el('rect', { x: x1, y: y - STR_SP / 2, width: x2 - x1, height: STR_SP, class: 'hit' });
+    hit.addEventListener('pointerdown', e => { e.preventDefault(); tapNote(si, f); });
+    svg.appendChild(hit);
+    const dot = el('circle', { cx, cy: y, r: 15, class: 'note-dot' });
+    const name = el('text', { x: cx, y: y + 4.5, class: 'note-name' });
+    svg.appendChild(dot); svg.appendChild(name);
+    dots[si + ',' + f] = { dot, name, si, f };
+  }
+});
+
+// ---------- Interaction ----------
+const nowPlaying = document.getElementById('nowPlaying');
+let namesOn = false, litTimeout = null;
+
+function light(si, f, hold = false) {
+  const d = dots[si + ',' + f];
+  if (!d) return;
+  const midi = STRINGS[si].midi + f;
+  d.dot.classList.add('lit');
+  d.name.textContent = noteName(midi);
+  d.name.classList.remove('dim');
+  d.name.classList.add('lit');
+  if (!hold) setTimeout(() => { d.dot.classList.remove('lit'); d.name.classList.remove('lit'); }, 700);
+}
+function clearBoard() {
+  Object.values(dots).forEach(d => { d.dot.classList.remove('lit'); d.name.classList.remove('lit'); });
+  document.querySelectorAll('#chords button').forEach(b => b.classList.remove('active'));
+  nowPlaying.textContent = '';
+}
+function tapNote(si, f) {
+  clearBoard();
+  const midi = STRINGS[si].midi + f;
+  light(si, f);
+  playMidi(midi);
+  nowPlaying.textContent = `${STRINGS[si].label} string, fret ${f} → ${noteName(midi)}`;
+}
+function showChord(name, shape) {
+  clearBoard();
+  document.querySelector(`#chords button[data-chord="${name}"]`).classList.add('active');
+  const played = [];
+  // light all fretted notes (hold), mark muted strings
+  shape.forEach((f, si) => {
+    if (f >= 0) { light(si, f, true); played.push(si); }
+    else {
+      const y = stringY(si);
+      const x = el('text', { x: NUT_X - 34, y: y + 6, class: 'muted-x mx' });
+      x.textContent = '✕'; svg.appendChild(x);
+    }
+  });
+  // strum low -> high with stagger
+  played.sort((a, b) => b - a).forEach((si, k) => {
+    playMidi(STRINGS[si].midi + shape[si], k * 0.07, 0.45);
+  });
+  nowPlaying.textContent = `${name} chord shape — tap any string to play single notes`;
+}
+// chord buttons
+const chordBar = document.getElementById('chords');
+Object.keys(CHORDS).forEach(name => {
+  const b = document.createElement('button');
+  b.className = 'chord'; b.dataset.chord = name; b.textContent = name;
+  b.addEventListener('click', () => showChord(name, CHORDS[name]));
+  chordBar.appendChild(b);
+});
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.querySelectorAll('.mx').forEach(n => n.remove());
+  clearBoard();
+});
+// remove mute markers whenever board is cleared via tap
+const origClear = clearBoard;
+clearBoard = function () { document.querySelectorAll('.mx').forEach(n => n.remove()); origClear(); };
+
+// note-name toggle
+const namesToggle = document.getElementById('namesToggle');
+namesToggle.addEventListener('click', () => {
+  namesOn = !namesOn;
+  namesToggle.textContent = 'Note names: ' + (namesOn ? 'on' : 'off');
+  namesToggle.classList.toggle('on', namesOn);
+  Object.values(dots).forEach(d => {
+    const midi = STRINGS[d.si].midi + d.f;
+    if (namesOn && !d.name.classList.contains('lit')) {
+      d.name.textContent = noteName(midi);
+      d.name.classList.add('dim');
+    } else {
+      d.name.classList.remove('dim');
+      if (!d.name.classList.contains('lit')) d.name.textContent = '';
+    }
+  });
+});
+</script>
+</body>
+</html>
