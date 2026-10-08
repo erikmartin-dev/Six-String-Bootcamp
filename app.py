@@ -10,6 +10,7 @@ import os
 import re
 import json
 import html as htmlmod
+from urllib.parse import quote_plus
 
 import streamlit as st
 import streamlit.components.v1 as components
@@ -138,6 +139,58 @@ def chordsheet_html(text):
                 f'<span class="cs-lyr">{htmlmod.escape(head)}</span></span>')
         out.append('<div class="cs-line">' + "".join(chunks) + "</div>")
     return "".join(out)
+
+
+CHORD_RE = re.compile(
+    r"^[A-G][#b]?(?:m(?!aj)|maj|min|dim|aug|sus[24]?|add\d*|\d+)*(?:/[A-G][#b]?)?$",
+    re.IGNORECASE)
+
+
+def is_chord_line(line):
+    """A line is a chord line if every token looks like a chord symbol."""
+    s = line.strip()
+    if not s:
+        return False
+    if any(c in s for c in ",.!?;:\"'()"):
+        return False
+    toks = s.split()
+    return bool(toks) and all(CHORD_RE.match(tok) for tok in toks)
+
+
+def convert_chord_sheet(text):
+    """Turn a chords-over-lyrics paste (or inline [Am] text) into [C] inline format.
+
+    Standard chord-site layout:
+        G               C                 D
+        Amazing grace, how sweet the sound
+    becomes:
+        [G]Amazing [C]grace, how [D]sweet the sound
+    """
+    if re.search(r"\[[A-G][#b]?(?:m|7|maj|min|sus|add|dim|aug)", text):
+        return text.strip()  # already inline format
+    lines = text.split("\n")
+    out = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        nxt = lines[i + 1] if i + 1 < len(lines) else ""
+        if is_chord_line(line) and nxt.strip() and not is_chord_line(nxt):
+            lyric = nxt.rstrip("\n")
+            inserts = []
+            for m in re.finditer(r"\S+", line):
+                pos = min(m.start(), len(lyric))
+                inserts.append((pos, f"[{m.group(0)}]"))
+            for pos, tag in sorted(inserts, reverse=True):
+                lyric = lyric[:pos] + tag + lyric[pos:]
+            out.append(lyric)
+            i += 2
+        elif is_chord_line(line):
+            out.append(" ".join(f"[{tok}]" for tok in line.split()))
+            i += 1
+        else:
+            out.append(line)
+            i += 1
+    return "\n".join(out).strip()
 
 
 def song_view(song, key_prefix):
@@ -755,184 +808,6 @@ def tuner():
     components.html(TUNER_HTML, height=380, scrolling=False)
 
 
-# ----------------------------------------------------------------------------
-# Practice dialogue — AI check-ins. v1: lessons 1-3 (single-note mic grading).
-# ----------------------------------------------------------------------------
-PRACTICES = {
-    1: {
-        "title": "E minor \u2014 string by string",
-        "intro": "Two fingers, six strings ringing. Pick each string one at a time, top to bottom. I'm listening.",
-        "steps": [
-            ("Pick the 6th string, open.", 40),
-            ("5th string, 2nd fret \u2014 pointer finger.", 47),
-            ("4th string, 2nd fret \u2014 bird finger.", 52),
-            ("3rd string, open.", 55),
-            ("2nd string, open.", 59),
-            ("1st string, open.", 64),
-        ],
-    },
-    2: {
-        "title": "Tuning check \u2014 open strings",
-        "intro": "If these six aren't right, nothing else will be. Pick each open string, top to bottom.",
-        "steps": [
-            ("6th string, open.", 40),
-            ("5th string, open.", 45),
-            ("4th string, open.", 50),
-            ("3rd string, open.", 55),
-            ("2nd string, open.", 59),
-            ("1st string, open.", 64),
-        ],
-    },
-    3: {
-        "title": "1-2-3-4 on the 6th string",
-        "intro": "Fret five is your one. Tips of your fingers \u2014 go.",
-        "steps": [
-            ("6th string, 5th fret.", 45),
-            ("6th string, 6th fret.", 46),
-            ("6th string, 7th fret.", 47),
-            ("6th string, 8th fret.", 48),
-            ("Back down \u2014 8th fret.", 48),
-            ("7th fret.", 47),
-            ("6th fret.", 46),
-            ("5th fret.", 45),
-        ],
-    },
-}
-
-PRACTICE_HTML = """
-<div style="text-align:center;padding:10px;max-width:560px;margin:0 auto;">
-  <div style="color:#a0a0a0;font-size:0.9rem;">__INTRO__</div>
-  <div id="pStep" style="color:#5a5a72;font-size:0.85rem;margin-top:10px;"></div>
-  <div id="pPrompt" style="font-size:1.5rem;font-weight:700;color:#f0f0f5;margin:8px 0;min-height:2.2em;"></div>
-  <div id="pHeard" style="font-size:1.05rem;color:#a0a0a0;min-height:1.7em;"></div>
-  <div id="pFeed" style="font-size:1.15rem;font-weight:600;min-height:1.8em;margin:4px 0;"></div>
-  <div style="width:90%;height:8px;background:#16213e;border-radius:6px;margin:8px auto;overflow:hidden;">
-    <div id="pBar" style="height:100%;width:0%;background:#4ade80;border-radius:6px;transition:width .2s;"></div>
-  </div>
-  <button id="pStart" style="margin-top:6px;background:#e94560;color:#fff;border:none;border-radius:10px;
-    padding:12px 30px;font-size:1rem;font-weight:700;cursor:pointer;">START PRACTICE</button>
-  <div style="color:#5a5a72;font-size:0.78rem;margin-top:8px;">needs microphone access &middot; works on localhost / HTTPS</div>
-</div>
-<script>
-const PSTEPS=__STEPS__;
-const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-function midiName(m){return NAMES[m%12]+(Math.floor(m/12)-1);}
-function midiFreq(m){return 440*Math.pow(2,(m-69)/12);}
-const PRAISE=["Good.","Clean.","That's it.","Nailed.","Just like that."];
-let pIdx=0, pHold=0, pWrong=0, pWrongNote=-1, pStepT=0, pDone=false, pStartT=0, pTimerOn=false;
-const pStep=document.getElementById('pStep'), pPrompt=document.getElementById('pPrompt'),
-      pHeard=document.getElementById('pHeard'), pFeed=document.getElementById('pFeed'),
-      pBar=document.getElementById('pBar'), pStart=document.getElementById('pStart');
-function pAutoCorrelate(buf,sr){
-  let SIZE=buf.length, rms=0, i;
-  for(i=0;i<SIZE;i++) rms+=buf[i]*buf[i];
-  if(Math.sqrt(rms/SIZE)<0.015) return -1;
-  let r1=0, r2=SIZE-1;
-  const b=buf.slice(0);
-  for(i=0;i<SIZE/2;i++) if(Math.abs(b[i])<0.2){b[i]=0;r1=i;}
-  for(i=1;i<SIZE/2;i++) if(Math.abs(b[SIZE-i])<0.2){b[SIZE-i]=0;r2=SIZE-i;}
-  const b2=b.slice(r1,r2); SIZE=b2.length;
-  const c=new Array(SIZE).fill(0);
-  for(i=0;i<SIZE;i++) for(let j=0;j<SIZE-i;j++) c[i]+=b2[j]*b2[j+i];
-  let d=0; while(d<SIZE-1 && c[d]>c[d+1]) d++;
-  let maxv=-1, maxp=-1;
-  for(i=d;i<SIZE;i++) if(c[i]>maxv){maxv=c[i];maxp=i;}
-  let T0=maxp;
-  if(T0>0&&T0<SIZE-1){
-    const x1=c[T0-1],x2=c[T0],x3=c[T0+1],aa=(x1+x3-2*x2)/2,bb=(x3-x1)/2;
-    if(aa) T0=T0-bb/(2*aa);
-  }
-  return sr/T0;
-}
-function pShowStep(){
-  const s=PSTEPS[pIdx];
-  pStep.textContent='Step '+(pIdx+1)+' of '+PSTEPS.length;
-  pPrompt.textContent=s.prompt;
-  pHeard.textContent='listening\u2026';
-  pFeed.textContent=''; pFeed.style.color='';
-  pBar.style.width='0%';
-  pHold=0; pWrong=0; pWrongNote=-1; pStepT=Date.now();
-}
-function pFinish(){
-  pDone=true; pTimerOn=false;
-  const secs=Math.round((Date.now()-pStartT)/1000);
-  pStep.textContent='Complete';
-  pPrompt.textContent='\uD83C\uDF96\uFE0F PRACTICE PASSED';
-  pPrompt.style.color='#4ade80';
-  pHeard.textContent=PSTEPS.length+' for '+PSTEPS.length+' \u00b7 '+secs+' seconds';
-  pFeed.textContent='Claim your badge below \u2014 then it\u2019s on to the next lesson.';
-  pFeed.style.color='#4ade80';
-  pBar.style.width='100%';
-  pStart.style.display='none';
-}
-pStart.addEventListener('click', async ()=>{
-  pStart.style.display='none';
-  try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser();
-    an.fftSize=2048; src.connect(an);
-    const buf=new Float32Array(an.fftSize);
-    pIdx=0; pStartT=Date.now(); pTimerOn=true;
-    pShowStep();
-    (function tick(){
-      if(!pTimerOn||pDone) return;
-      an.getFloatTimeDomainData(buf);
-      const f=pAutoCorrelate(buf,ctx.sampleRate);
-      const target=midiFreq(PSTEPS[pIdx].midi);
-      if(f>50&&f<1200){
-        const cents=Math.round(1200*Math.log2(f/target));
-        const near=Math.round(12*Math.log2(f/440))+69;
-        pHeard.textContent='I hear: '+midiName(near)+' ('+(cents>0?'+':'')+cents+'\u00a2)';
-        if(Math.abs(cents)<=25){
-          pHold++; pWrong=0;
-          pBar.style.width=Math.min(100,(pHold/45*100))+'%';
-          pFeed.textContent='hold it\u2026'; pFeed.style.color='#a0a0a0';
-          if(pHold>=45){
-            pFeed.textContent=PRAISE[Math.floor(Math.random()*PRAISE.length)];
-            pFeed.style.color='#4ade80';
-            pIdx++;
-            if(pIdx>=PSTEPS.length){ pFinish(); return; }
-            setTimeout(()=>{ if(pTimerOn&&!pDone) pShowStep(); }, 700);
-            pTimerOn=false;
-            setTimeout(()=>{ pTimerOn=true; (function resume(){ if(pTimerOn&&!pDone) requestAnimationFrame(tick); })(); }, 750);
-            return;
-          }
-        } else {
-          pHold=0; pBar.style.width='0%';
-          if(near===pWrongNote){ pWrong++; } else { pWrongNote=near; pWrong=1; }
-          if(pWrong>=50){
-            pFeed.textContent='I hear '+midiName(near)+' \u2014 fix your fingers and try again.';
-            pFeed.style.color='#fbbf24';
-          }
-        }
-      } else {
-        pHeard.textContent='listening\u2026 play the note';
-      }
-      if(Date.now()-pStepT>45000){
-        pFeed.textContent='Take a breath. Reset your hand \u2014 '+PSTEPS[pIdx].prompt;
-        pFeed.style.color='#fbbf24';
-        pStepT=Date.now(); pHold=0; pWrong=0;
-      }
-      requestAnimationFrame(tick);
-    })();
-  }catch(err){
-    pHeard.textContent='microphone blocked \u2014 allow access and retry';
-    pStart.style.display='';
-  }
-});
-</script>
-"""
-
-
-def practice_dialogue(lesson_no):
-    pr = PRACTICES[lesson_no]
-    import json as _json
-    steps = _json.dumps([{"prompt": p, "midi": m} for p, m in pr["steps"]])
-    html = PRACTICE_HTML.replace("__STEPS__", steps).replace("__INTRO__", pr["intro"])
-    components.html(html, height=560, scrolling=False)
-
-
 def ear_trainer():
     components.html(EAR_TRAINER_HTML, height=450, scrolling=False)
 
@@ -1031,6 +906,30 @@ def find_songs_page():
                               "chordsheet": "", "tab": ""})
                 save_json(SAVED_PATH, saved)
                 st.success(f"Saved “{title}”. Find it under Saved.")
+            st.markdown("**🎼 Chord sheet** — Songsterr only carries tabs, so chord "
+                        "sheets come from you: grab one from any chord site, paste it, "
+                        "and it's converted automatically.")
+            web_q = quote_plus(f"{title} {artist} guitar chords")
+            st.link_button("🔍 Find chords on the web",
+                           f"https://www.google.com/search?q={web_q}")
+            pasted = st.text_area("Paste chord sheet", key=f"cs_{sid}", height=140,
+                                  placeholder="Paste chords-over-lyrics or [Am]-style chords here…",
+                                  label_visibility="collapsed")
+            if st.button("💾 Save chord sheet", key=f"csave_{sid}"):
+                if not pasted.strip():
+                    st.warning("Paste a chord sheet first.")
+                else:
+                    sheet = convert_chord_sheet(pasted)
+                    url = TAB_URL.format(sid)
+                    entry = next((e for e in saved if e.get("url") == url), None)
+                    if entry is None:
+                        entry = {"title": title, "artist": artist,
+                                 "source": "Songsterr", "url": url,
+                                 "chordsheet": "", "tab": ""}
+                        saved.append(entry)
+                    entry["chordsheet"] = sheet
+                    save_json(SAVED_PATH, saved)
+                    st.success(f"Chord sheet saved for “{title}”. Open it under Saved → Lyrics + Chords.")
 
 # ----------------------------------------------------------------------------
 # Pages
@@ -1205,25 +1104,6 @@ def page_courses():
                 unsafe_allow_html=True)
     sgt_card("<b>Twelve courses stand between you and the guitarist you were "
              "born to be.</b> Take them in order, recruit — no skipping leg day.")
-    if st.session_state.get("practice"):
-        lesson = st.session_state["practice"]
-        pr = PRACTICES[lesson]
-        if st.button("\u2190 Back to courses"):
-            st.session_state["practice"] = None
-            st.rerun()
-        st.markdown(f"### \U0001f941 Practice: {htmlmod.escape(pr['title'])}")
-        st.caption("The AI is listening. Hold each note steady until it passes you.")
-        practice_dialogue(lesson)
-        st.markdown("---")
-        badges = st.session_state.setdefault("badges", [])
-        if lesson in badges:
-            st.success("\U0001f3c5 Badge earned — it's on your Collection wall.")
-        else:
-            if st.button("\U0001f3c5 Claim my badge", key=f"badge_{lesson}"):
-                badges.append(lesson)
-                st.balloons()
-                st.success("\U0001f3c5 Badge earned! Check your Collection.")
-        return
     mine = st.session_state.setdefault("my_courses", [])
     for idx, (name, price, desc) in enumerate(COURSES):
         st.markdown(f"""<div class="course-card"><h4>Course {idx+1}: {htmlmod.escape(name)}</h4>
@@ -1241,10 +1121,6 @@ def page_courses():
                 for title, body in notes:
                     st.markdown(f"**{title}**")
                     st.markdown(body)
-        if idx + 1 in PRACTICES:
-            if st.button(f"\U0001f941 Practice: {PRACTICES[idx + 1]['title']}", key=f"prac_{idx}"):
-                st.session_state["practice"] = idx + 1
-                st.rerun()
     st.caption("Lesson notes are Erik's own teaching — full video lessons + AI check-ins at launch.")
 
 
@@ -1300,14 +1176,12 @@ def page_collection():
                 "community wall for everyone to see, and an **NFT** — a piece of art on the blockchain "
                 "cataloging your achievement — lands in your collection. No wallets to set up, no crypto "
                 "to buy. It just shows up.")
-    badges = st.session_state.get("badges", [])
     cols = st.columns(4)
     for i in range(12):
-        earned = (i + 1) in badges
         with cols[i % 4]:
-            st.markdown(f"""<div class="course-card" style="text-align:center;{'opacity:0.55;' if not earned else ''}">
-            <div style="font-size:2rem;">{"\U0001f3c5" if earned else "🔒"}</div><div>Lesson {i + 1}</div>
-            <div style="font-size:0.75rem;color:{'#4ade80' if earned else '#5a5a72'};">{"earned" if earned else "locked"}</div></div>""",
+            st.markdown(f"""<div class="course-card" style="text-align:center;opacity:0.55;">
+            <div style="font-size:2rem;">🔒</div><div>Lesson {i + 1}</div>
+            <div style="font-size:0.75rem;color:#5a5a72;">locked</div></div>""",
                         unsafe_allow_html=True)
     st.caption("Badges + NFT collection unlock at launch.")
 
