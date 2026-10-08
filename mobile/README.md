@@ -46,3 +46,5 @@ or the full React Native rebuild — no Mac required.
 
 - `INTERNET` — loads the hosted app.
 - `RECORD_AUDIO` — the in-app tuner uses the microphone.
+
+> Build status: [![Android build](https://github.com/erikmartin-dev/Six-String-Bootcamp/actions/workflows/android.yml/badge.svg)](https://github.com/erikmartin-dev/Six-String-Bootcamp/actions/workflows/android.yml)
