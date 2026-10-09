@@ -576,16 +576,11 @@ def sgt_intro():
     st.markdown('<div class="hero"><h1>🎸 SIX-STRING BOOTCAMP</h1>'
                 '<p>Your instructor is about to report for duty.</p></div>',
                 unsafe_allow_html=True)
-    col1, col2 = st.columns([3, 2])
-    with col1:
-        if os.path.exists(SGT["solo"]):
-            st.video(SGT["solo"])
-        st.caption("Sgt. Martin warming up. Sound on, recruit.")
-    with col2:
-        if os.path.exists(SGT["portrait"]):
-            st.image(SGT["portrait"])
-        if os.path.exists(SGT["welcome_speech"]):
-            st.audio(SGT["welcome_speech"])
+    if os.path.exists(SGT["solo"]):
+        st.video(SGT["solo"])
+    st.caption("Sgt. Martin warming up. Sound on, recruit.")
+    if os.path.exists(SGT["welcome_speech"]):
+        st.audio(SGT["welcome_speech"])
     st.markdown("")
     if st.button("REPORT FOR TRAINING, SERGEANT!", type="primary"):
         st.session_state["enlisted"] = True
