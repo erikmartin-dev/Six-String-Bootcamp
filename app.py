@@ -2466,11 +2466,156 @@ def page_community():
         _board_tab()
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
+
+def sgt_bubble():
+    """Floating Sgt. Martin AI-tutor bubble. Scripted-brain prototype: the KB
+    lives in JS, matching runs client-side, no server round-trip."""
+    if not st.session_state.get("instructor_on", True):
+        return
+    html = """<script>
+(function() {
+var d = window.parent.document;
+if (d.getElementById('sgt-root')) return;
+var PORTRAIT = "https://raw.githubusercontent.com/erikmartin-dev/Six-String-Bootcamp/main/assets/sgt-martin/portrait.webp";
+var TALKING = "https://raw.githubusercontent.com/erikmartin-dev/Six-String-Bootcamp/main/assets/sgt-martin/talking.mp4";
+
+var KB = [
+{k:['hello','hey','howdy','morning','evening'], a:"Recruit! Sgt. Martin reporting. Ask me about tuning, chords, practice \u2014 anything guitar. What is the mission?"},
+{k:['tune','tuning','tuner'], a:"Standard tuning, low to high: E \u2013 A \u2013 D \u2013 G \u2013 B \u2013 e. Open the Tools tab and run the tuner \u2014 get every string dead center before you play a note."},
+{k:['string names','strings named','note names','names of the strings'], a:"Low to high: E, A, D, G, B, e. The old-timers say: 'Eddie Ate Dynamite, Good Bye Eddie.' Say it until it is reflex."},
+{k:['e minor','first chord','easy chord','em chord'], a:"Your first chord: E minor. Pointer finger, 5th string 2nd fret. Bird finger, 4th string 2nd fret. Strum all six. That is Lesson 1 \u2014 go earn the badge."},
+{k:['finger names','fingers called','which finger'], a:"Pointer finger, bird finger, ring finger, pinky \u2014 and the thumb rides behind the neck. Say it like you mean it, recruit."},
+{k:['grabbing the chord','grab the chord'], a:"Grabbing the chord: do not place fingers one at a time like you are defusing a bomb. Move your whole hand as a unit and grab the shape at once. Slow is smooth, smooth is fast."},
+{k:['practice','how long','routine','how often'], a:"Twenty-five focused minutes beats two distracted hours. Tune up, drill one thing, play one song. Every day you show up, the fingers get smarter."},
+{k:['pentatonic'], a:"The pentatonic scale \u2014 five notes that sound good over everything. We build it one position per lesson, then connect the boxes and solo with purpose. It is the spine of the whole course."},
+{k:['barre'], a:"Barre chords: your pointer finger becomes a capo. E-shape first, A-shape after. They hurt for two weeks, then they are yours forever. Lessons 9 and 10."},
+{k:['capo'], a:"A capo clamps across the fretboard and moves everything up \u2014 play G-shape chords but sound in A. Full briefing in Lesson 12."},
+{k:['power chord','powerchord'], a:"Power chords: pointer finger plus ring finger, two strings, all attitude. The backbone of rock. Lesson 8."},
+{k:['strum','strumming'], a:"Strumming that sings: loose wrist, brush the strings, accents on the beat. Lesson 5 turns metronome prisoners into groove players."},
+{k:['solo','lead guitar'], a:"Soloing with purpose: it is not how many notes, it is which ones and when. Pentatonic positions plus phrasing. Lesson 11."},
+{k:['gear','which guitar','starter guitar','buy a guitar'], a:"Erik's pick: the Cort starter pack \u2014 around a hundred bucks with a gig bag and picks, sounds great, plays easy. Check the Gear tab."},
+{k:['course','lessons','curriculum','learn guitar'], a:"Twelve lessons, song-first: you play a real song in Lesson 1, then we backfill tuning, technique, and theory. Pentatonic all the way through. Hit Courses to enlist."},
+{k:['badge'], a:"Badges are proof of progress \u2014 pass the practice, claim the badge, and it auto-posts to Six-String Social for the world to see. Collect all twelve."},
+{k:['forum','social','community'], a:"Six-String Social: the wall, five forums, profiles, and the gig board. Post your badge wins \u2014 the pros are watching and they answer questions."},
+{k:['gig','setlist'], a:"The Gigs tab builds your setlists. The Social board's gig section finds you players and venues. Play out as soon as you can \u2014 nothing teaches like a crowd."},
+{k:['metronome'], a:"The metronome is your drill sergeant's drum. Tools tab \u2014 start slow, lock in, then speed up. If you cannot play it slow, you cannot play it fast."},
+{k:['ear trainer','pitch','singing'], a:"Ear Trainer in the Tools tab: hear the note, sing it back, get scored. Five minutes a day and your ears start doing the work for you."},
+{k:['thank'], a:"Do not thank me \u2014 thank your calluses. Now get back to the fretboard."},
+{k:['who are you','your name','sgt martin'], a:"Sgt. Martin. AI tutor, guitar division. I run the drills; Erik wrote the playbook."},
+{k:['hard','difficult','giving up','frustrat','i suck','too hard'], a:"Every guitarist sounded terrible at first \u2014 every single one. The ones who got good are the ones who did not quit in week three. Keep going."},
+{k:['callus','fingers hurt','finger pain','sore fingers'], a:"Sore fingertips are tuition \u2014 they harden in a week or two. Short sessions, press just behind the fret, never play through sharp pain."},
+{k:['tablature','tabs','read music','sheet music'], a:"Tabs live in the Songs tab \u2014 the lines are your strings, the numbers are frets. Chords ride above the lyrics; tablature gets its own button."}
+];
+var FALLBACK = "That is above my pay grade, recruit. Post it in the Beginner Questions forum \u2014 the community will square you away.";
+
+var css = "#sgt-bubble{position:fixed;right:18px;bottom:18px;width:64px;height:64px;border-radius:50%;"
++"border:3px solid #e94560;cursor:pointer;z-index:99999;overflow:hidden;background:#16213e;"
++"box-shadow:0 4px 18px rgba(233,69,96,.45);animation:sgt-pulse 2.4s infinite;padding:0;}"
++"#sgt-bubble img{width:100%;height:100%;object-fit:cover;display:block;}"
++"@keyframes sgt-pulse{0%,100%{box-shadow:0 4px 18px rgba(233,69,96,.45);}50%{box-shadow:0 4px 28px rgba(233,69,96,.85);}}"
++"#sgt-panel{position:fixed;right:18px;bottom:94px;width:330px;max-width:calc(100vw - 36px);height:460px;"
++"max-height:calc(100vh - 130px);background:#141422;border:1px solid #2a2a3e;border-radius:16px;z-index:99999;"
++"display:none;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.6);font-family:Inter,sans-serif;}"
++"#sgt-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;}"
++"#sgt-head img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid #e94560;}"
++"#sgt-head b{color:#fff;font-size:14px;display:block;}"
++"#sgt-head span{color:#8a8a9e;font-size:11px;display:block;}"
++"#sgt-x{margin-left:auto;background:none;border:none;color:#8a8a9e;font-size:16px;cursor:pointer;}"
++"#sgt-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}"
++".sgt-msg{max-width:85%;padding:8px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;color:#eee;}"
++".sgt-user{align-self:flex-end;background:#e94560;border-bottom-right-radius:4px;}"
++".sgt-bot{align-self:flex-start;background:#1f1f33;border-bottom-left-radius:4px;}"
++".sgt-typing span{width:7px;height:7px;background:#8a8a9e;border-radius:50%;display:inline-block;margin-right:4px;animation:sgt-blink 1.2s infinite;}"
++".sgt-typing span:nth-child(2){animation-delay:.2s;}.sgt-typing span:nth-child(3){animation-delay:.4s;}"
++"@keyframes sgt-blink{0%,100%{opacity:.3;}50%{opacity:1;}}"
++"#sgt-chips{display:flex;gap:6px;padding:0 12px 8px;flex-wrap:wrap;}"
++"#sgt-chips button{background:#1f1f33;border:1px solid #2a2a3e;color:#e94560;border-radius:20px;padding:5px 10px;font-size:12px;cursor:pointer;}"
++"#sgt-inputrow{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #2a2a3e;}"
++"#sgt-in{flex:1;background:#1f1f33;border:1px solid #2a2a3e;border-radius:20px;padding:8px 14px;color:#fff;font-size:13px;outline:none;}"
++"#sgt-send{background:#e94560;border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:15px;cursor:pointer;}";
+var root = d.createElement('div');
+root.id = 'sgt-root';
+root.innerHTML = '<style>' + css + '</style>'
+ + '<div id="sgt-bubble" title="Ask Sgt. Martin"><img src="' + PORTRAIT + '"></div>'
+ + '<div id="sgt-panel">'
+ + '<div id="sgt-head"><img src="' + PORTRAIT + '"><div><b>SGT. MARTIN</b><span>AI tutor &middot; prototype</span></div><button id="sgt-x">\u2715</button></div>'
+ + '<div id="sgt-msgs"></div><div id="sgt-chips"></div>'
+ + '<div id="sgt-inputrow"><input id="sgt-in" placeholder="Ask about guitar..." autocomplete="off">'
+ + '<button id="sgt-send">\u27a4</button></div></div>';
+d.body.appendChild(root);
+var msgs = d.getElementById('sgt-msgs');
+function addMsg(who, text) {
+  var div = d.createElement('div');
+  div.className = 'sgt-msg sgt-' + who;
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function sgtReply(q) {
+  var ql = q.toLowerCase(), best = null, bestScore = 0;
+  KB.forEach(function(item) {
+    var s = 0;
+    item.k.forEach(function(kw) {
+      try { if (ql.match(new RegExp('\\b' + kw + 's?\\b'))) s++; } catch(e) {}
+    });
+    if (s > bestScore) { bestScore = s; best = item; }
+  });
+  return best ? best.a : FALLBACK;
+}
+function setTalking(on) {
+  var b = d.getElementById('sgt-bubble');
+  if (on) {
+    b.innerHTML = '<video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block;">'
+      + '<source src="' + TALKING + '" type="video/mp4"></video>';
+  } else {
+    b.innerHTML = '<img src="' + PORTRAIT + '">';
+  }
+}
+function send(preset) {
+  var inp = d.getElementById('sgt-in');
+  var q = (preset !== undefined ? preset : inp.value).trim();
+  if (!q) return;
+  addMsg('user', q);
+  inp.value = '';
+  var t = d.createElement('div');
+  t.className = 'sgt-msg sgt-bot sgt-typing';
+  t.innerHTML = '<span></span><span></span><span></span>';
+  msgs.appendChild(t);
+  msgs.scrollTop = msgs.scrollHeight;
+  setTalking(true);
+  setTimeout(function() {
+    if (t.parentNode) t.parentNode.removeChild(t);
+    setTalking(false);
+    addMsg('bot', sgtReply(q));
+  }, 900 + Math.random() * 900);
+}
+d.getElementById('sgt-bubble').onclick = function() {
+  var p = d.getElementById('sgt-panel');
+  var open = p.style.display === 'none' || !p.style.display;
+  p.style.display = open ? 'flex' : 'none';
+  if (open && !msgs.children.length) {
+    addMsg('bot', "Recruit! Sgt. Martin here \u2014 AI tutor, guitar division. Ask me about tuning, chords, practice, anything. What is the mission?");
+  }
+};
+d.getElementById('sgt-x').onclick = function() { d.getElementById('sgt-panel').style.display = 'none'; };
+d.getElementById('sgt-send').onclick = function() { send(); };
+d.getElementById('sgt-in').addEventListener('keydown', function(e) { if (e.key === 'Enter') send(); });
+[["Tune my guitar","how do i tune my guitar"],["Teach me Em","teach me e minor"],["Practice tips","practice tips"]].forEach(function(c) {
+  var b = d.createElement('button');
+  b.textContent = c[0];
+  b.onclick = function() { send(c[1]); };
+  d.getElementById('sgt-chips').appendChild(b);
+});
+})();
+</script>""";
+    components.html(html, height=0, scrolling=False)
+
 # Standalone Six-String Social mode. social.py sets SIXSTRING_SOCIAL=1 and then
 # imports this module: same community data, its own front door, no bootcamp chrome.
 # ----------------------------------------------------------------------------
 if os.environ.get("SIXSTRING_SOCIAL") == "1":
     page_community()
+    sgt_bubble()
     st.stop()
 
 
@@ -2535,6 +2680,7 @@ if st.session_state.pop("_jump", False):
         height=0, scrolling=False)
 
 PAGES.get(st.session_state["page"], page_home)()
+sgt_bubble()
 
 _scroll_target = st.session_state.pop("_scroll_to", None)
 if _scroll_target:
