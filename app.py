@@ -5,10 +5,14 @@ Local data: saved_songs.json, gigs.json (created next to this file)
 Secrets (.streamlit/secrets.toml, never commit):
     ELEVENLABS_API_KEY = "..."   # optional — Sgt. Martin's live voice
     ELEVENLABS_VOICE_ID = "..."  # optional — your chosen ElevenLabs voice
+    github_token = "..."  # community wall write access (fine-grained PAT, Contents: read+write)
 """
 import os
 import re
 import json
+import base64
+import time
+import uuid
 import html as htmlmod
 from urllib.parse import quote_plus
 
@@ -1132,6 +1136,7 @@ def page_home():
         ("🧰", "Tools", "Metronome, tuner, and ear trainer — free forever."),
         ("🎸", "Gear", "The starter guitar Erik recommends, and what's next."),
         ("🏆", "Collection", "Your badges and NFTs. Proof of progress."),
+        ("💬", "Community", "The wall — post progress, cheer on recruits."),
     ]
     cols = st.columns(2)
     for i, (icon, name, desc) in enumerate(grid):
@@ -1415,18 +1420,207 @@ def page_tools():
 
 
 # ----------------------------------------------------------------------------
+# Community wall — shared through the repo at community/wall.json
+# ----------------------------------------------------------------------------
+WALL_REPO = "erikmartin-dev/Six-String-Bootcamp"
+WALL_PATH = "community/wall.json"
+WALL_RAW = f"https://raw.githubusercontent.com/{WALL_REPO}/main/{WALL_PATH}"
+WALL_API = f"https://api.github.com/repos/{WALL_REPO}/contents/{WALL_PATH}"
+WALL_LOCAL = os.path.join(DATA_DIR, "wall.json")
+WALL_HEADERS = {"Accept": "application/vnd.github+json",
+                "X-GitHub-Api-Version": "2022-11-28"}
+
+
+def _wall_token():
+    return (_secret("github_token") or "").strip()
+
+
+def wall_load():
+    """Returns (posts, shared). Shared wall from GitHub; falls back to local file."""
+    if requests is not None:
+        try:
+            r = requests.get(WALL_RAW, timeout=8)
+            if r.status_code == 200:
+                data = r.json()
+                if isinstance(data, dict) and isinstance(data.get("posts"), list):
+                    return data["posts"], True
+        except Exception:
+            pass
+    return load_json(WALL_LOCAL, {"posts": []}).get("posts", []), False
+
+
+def _wall_remote_update(fn):
+    """Load the shared wall, apply fn(posts), write back. Returns True on success."""
+    tok = _wall_token()
+    if not (tok and requests is not None):
+        return False
+    try:
+        h = {**WALL_HEADERS, "Authorization": "Bearer " + tok}
+        cur = requests.get(WALL_API, headers=h, timeout=10).json()
+        sha = cur.get("sha")
+        if not sha:
+            return False
+        try:
+            data = json.loads(base64.b64decode(cur.get("content") or "").decode("utf-8", "replace"))
+        except Exception:
+            data = {}
+        posts = data.get("posts", []) if isinstance(data, dict) else []
+        fn(posts)
+        body = {"message": "Community wall update", "sha": sha,
+                "content": base64.b64encode(
+                    json.dumps({"posts": posts}, indent=2, ensure_ascii=False).encode()).decode()}
+        r = requests.put(WALL_API, headers=h, json=body, timeout=15)
+        return r.status_code in (200, 201)
+    except Exception:
+        return False
+
+
+def wall_publish(post):
+    """Append a post. Returns True on success."""
+    if _wall_token():
+        local = load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
+
+        def add(psts):
+            ids = {p.get("id") for p in psts}
+            for lp in local:  # migrate any device-only posts
+                if lp.get("id") not in ids:
+                    psts.append(lp)
+            psts.append(post)
+
+        if _wall_remote_update(add):
+            save_json(WALL_LOCAL, {"posts": []})
+            return True
+        return False
+    posts = load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
+    posts.append(post)
+    try:
+        save_json(WALL_LOCAL, {"posts": posts})
+        return True
+    except Exception:
+        return False
+
+
+def wall_like(post_id):
+    """Bump a post's like count. Returns True on success."""
+    def bump(psts):
+        for p in psts:
+            if p.get("id") == post_id:
+                p["likes"] = int(p.get("likes", 0) or 0) + 1
+                return True
+        return False
+
+    if _wall_token():
+        return _wall_remote_update(bump)
+    data = load_json(WALL_LOCAL, {"posts": []})
+    if not bump(data.get("posts", [])):
+        return False  # shared post, wall not connected
+    try:
+        save_json(WALL_LOCAL, data)
+        return True
+    except Exception:
+        return False
+
+
+def _ago(ts):
+    try:
+        d = time.time() - float(ts)
+    except Exception:
+        return ""
+    if d < 60:
+        return "just now"
+    if d < 3600:
+        return f"{int(d // 60)}m ago"
+    if d < 86400:
+        return f"{int(d // 3600)}h ago"
+    if d < 86400 * 7:
+        return f"{int(d // 86400)}d ago"
+    return time.strftime("%b %d, %Y", time.localtime(float(ts)))
+
+
+def page_community():
+    st.markdown('<div class="hero"><h1>💬 COMMUNITY WALL</h1>'
+                '<p>Post your progress. Cheer on your fellow recruits.</p></div>',
+                unsafe_allow_html=True)
+    posts, shared = wall_load()
+    liked = st.session_state.setdefault("wall_liked", [])
+
+    st.markdown("### Shout it out")
+    name = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
+                        placeholder="e.g. Erik", max_chars=30)
+    text = st.text_area("What's happening?",
+                        placeholder="Nailed my first clean G to C change today\u2026",
+                        max_chars=500, height=90)
+    my_badges = sorted(st.session_state.get("badges", []))
+    if my_badges:
+        st.caption("Your badges ride along on your post: " +
+                   " ".join(f"\U0001f3c5 L{b}" for b in my_badges))
+    if st.button("\U0001f4e3 Post to the wall", type="primary"):
+        if not (name or "").strip():
+            st.warning("Give yourself a name first.")
+        elif not (text or "").strip():
+            st.warning("Write something first.")
+        else:
+            st.session_state["wall_name"] = name.strip()[:30]
+            post = {"id": uuid.uuid4().hex[:12], "name": name.strip()[:30],
+                    "text": text.strip()[:500], "badges": my_badges,
+                    "ts": time.time(), "likes": 0}
+            if wall_publish(post):
+                st.success("You're on the wall! \U0001f3b8" if shared else
+                           "Posted \u2014 it stays on this device until the shared wall is connected.")
+                st.rerun()
+            else:
+                st.error("Couldn't reach the wall \u2014 check your connection and try again.")
+
+    if not shared:
+        st.info("\U0001f4e1 You're reading the public wall. Your posts stay on this device until "
+                "the shared wall is connected (one-time setup, two minutes).")
+
+    st.markdown("### The wall")
+    mine = [] if shared else load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
+    feed = sorted(mine + posts, key=lambda p: p.get("ts", 0), reverse=True)
+    if not feed:
+        st.caption("The wall is quiet\u2026 be the first to post. \U0001f3b8")
+    for p in feed:
+        pid = p.get("id", "")
+        nm = htmlmod.escape(str(p.get("name", "Recruit"))[:30])
+        tx = htmlmod.escape(str(p.get("text", ""))[:500]).replace("\n", "<br>")
+        chips = " ".join(
+            f"<span class='badge badge-free'>\U0001f3c5 L{b}</span>"
+            for b in (p.get("badges") or [])[:12])
+        chiprow = f"<div style='margin-top:0.3rem;'>{chips}</div>" if chips else ""
+        st.markdown(
+            f"<div class='tool-card' style='margin-bottom:0.15rem;'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:baseline;'>"
+            f"<b style='color:#e94560;'>{nm}</b>"
+            f"<span style='color:#8a8a9e;font-size:0.8rem;'>{_ago(p.get('ts', 0))}</span></div>"
+            f"<div style='margin:0.35rem 0;'>{tx}</div>{chiprow}</div>",
+            unsafe_allow_html=True)
+        likes = int(p.get("likes", 0) or 0)
+        if pid in liked:
+            st.button(f"\U0001f525 {likes}", key=f"wall_liked_{pid}", disabled=True)
+        elif st.button(f"\U0001f525 {likes}", key=f"wall_like_{pid}"):
+            if wall_like(pid):
+                liked.append(pid)
+                st.rerun()
+            else:
+                st.warning("Couldn't send the like \u2014 try again in a bit.")
+
+
+# ----------------------------------------------------------------------------
 # Router — top button nav, no sidebar
 # ----------------------------------------------------------------------------
 NAV = [
     ("🏠", "Home"), ("🎵", "Songs"), ("🔍", "Find Songs"), ("💾", "Saved"),
     ("🎤", "Gigs"), ("📚", "Learn"), ("🎓", "Courses"), ("💳", "Membership"),
     ("🧰", "Tools"), ("🎸", "Gear"), ("🏆", "Collection"),
+    ("💬", "Community"),
 ]
 PAGES = {
     "Home": page_home, "Songs": page_songs, "Find Songs": find_songs_page,
     "Saved": page_saved, "Gigs": page_gigs, "Learn": page_learn,
     "Courses": page_courses, "Membership": page_membership, "Tools": page_tools,
     "Gear": page_gear, "Collection": page_collection,
+    "Community": page_community,
 }
 
 if not sgt_intro():
@@ -1440,7 +1634,8 @@ def _goto(page):
 
 # Deep links for one-tap home-screen shortcuts: ?view=tuner|metronome|ear
 _DEEP_LINKS = {"tuner": ("Tools", "tool-tuner"), "metronome": ("Tools", "tool-metronome"),
-               "ear": ("Tools", "tool-ear"), "tools": ("Tools", None)}
+               "ear": ("Tools", "tool-ear"), "tools": ("Tools", None),
+               "community": ("Community", None)}
 if "page" not in st.session_state:
     st.session_state["page"] = "Home"
     try:
@@ -1451,7 +1646,7 @@ if "page" not in st.session_state:
         st.session_state["page"], st.session_state["_scroll_to"] = _DEEP_LINKS[_view]
 
 st.markdown('<div class="navbtn">', unsafe_allow_html=True)
-row1, row2 = st.columns(6), st.columns(5)
+row1, row2 = st.columns(6), st.columns(6)
 for i, (icon, name) in enumerate(NAV):
     col = row1[i] if i < 6 else row2[i - 6]
     active = st.session_state["page"] == name
