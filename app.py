@@ -1306,6 +1306,7 @@ def page_courses():
                 badges.append(lesson)
                 st.balloons()
                 st.success("\U0001f3c5 Badge earned! Check your Collection.")
+                _announce_badge(lesson, pr.get("title", ""))
         return
     mine = st.session_state.setdefault("my_courses", [])
     for idx, (name, price, desc) in enumerate(COURSES):
@@ -1717,6 +1718,9 @@ def _wall_tab():
     liked = st.session_state.setdefault("wall_liked", [])
     stuck = st.session_state.setdefault("wall_stuck", [])
     profiles = _profiles()
+    announce = st.checkbox("\U0001f4e2 Announce my badges on the wall automatically",
+                           value=st.session_state.get("announce_badges", True))
+    st.session_state["announce_badges"] = announce
 
     st.markdown("### Shout it out")
     name = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
@@ -1960,6 +1964,24 @@ def _board_tab():
             f"</div>",
             unsafe_allow_html=True)
 
+
+def _announce_badge(lesson, title):
+    """Auto-post a badge announcement to the community wall."""
+    if not st.session_state.get("announce_badges", True):
+        return
+    name = (st.session_state.get("wall_name") or "").strip()
+    if not name:
+        st.info("\U0001f4a1 Set your name on the Community wall and your future badges will announce themselves there. \U0001f4e2")
+        return
+    post = {"id": uuid.uuid4().hex[:12], "name": name,
+            "text": f"Just earned the Lesson {lesson} badge\u2014{title}! \U0001f3c5 Who's next? \U0001f3b8",
+            "badges": [lesson], "ts": time.time(), "likes": 0, "stickers": {}, "replies": []}
+    if wall_publish(post):
+        if _wall_token():
+            st.session_state.setdefault("wall_just_posted", []).append(post)
+        st.success("\U0001f4e2 Announced on the Community wall!")
+    else:
+        st.warning("Badge claimed, but the wall announcement didn't go through.")
 
 def page_community():
     st.markdown('<div class="hero"><h1>\U0001f4ac COMMUNITY</h1>'
