@@ -4,7 +4,7 @@
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_tuner"
-    android:description="Open Six-String Bootcamp straight into the tuner"
+    android:description="@string/widget_tuner_desc"
     android:widgetCategory="home_screen"
     android:targetCellWidth="2"
     android:targetCellHeight="1" />
