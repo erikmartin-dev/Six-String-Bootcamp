@@ -1229,6 +1229,16 @@ def page_home():
     st.markdown('<div class="hero"><h1>🎸 SIX-STRING BOOTCAMP</h1>'
                 '<p>Interactive guitar training · lyrics with chords · gig-ready setlists</p></div>',
                 unsafe_allow_html=True)
+    st.markdown(
+        '<div style="background:linear-gradient(135deg,#1a1a2e 0%,#3a1f1f 100%);'
+        'border:2px solid #e94560;border-radius:12px;padding:14px 16px;'
+        'margin:4px 0 12px;text-align:center;">'
+        '<div style="font-size:1.2rem;font-weight:800;color:#ffd700;">🎖️ VETERANS DISCOUNT</div>'
+        '<div style="color:#ffffff;font-size:1.05rem;margin-top:4px;">Veterans save '
+        '<b>20%</b> on Courses &amp; Membership.</div>'
+        '<div style="color:#a0a0a0;font-size:0.8rem;margin-top:2px;">Thank you for your '
+        'service. Discount applied at checkout.</div></div>',
+        unsafe_allow_html=True)
     sgt_card("<b>Welcome back, recruit.</b> Everything's up top now — pick a "
              "section and get to work. The fretboard doesn't practice itself.")
     on = st.checkbox("🎖️ Sgt. Martin instructor tips", value=st.session_state.get("instructor_on", True))
