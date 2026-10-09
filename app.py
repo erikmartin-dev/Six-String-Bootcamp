@@ -2168,18 +2168,306 @@ def _announce_badge(lesson, title):
     else:
         st.warning("Badge claimed, but the wall announcement didn't go through.")
 
+
+FORUMS_PATH = "community/forums.json"
+DEFAULT_FORUMS = [
+    {"id": "beginner-questions", "icon": "\u2753", "name": "Beginner Questions",
+     "desc": "No dumb questions. Ask anything."},
+    {"id": "gear-talk", "icon": "\U0001f3b8", "name": "Gear Talk",
+     "desc": "Guitars, amps, pedals, strings."},
+    {"id": "songwriting", "icon": "\U0001f3b5", "name": "Songwriting & Riffs",
+     "desc": "Riffs, lyrics, arrangements."},
+    {"id": "show-off", "icon": "\U0001f3aa", "name": "Show Off",
+     "desc": "Post your playing. Earn your applause."},
+    {"id": "theory", "icon": "\U0001f4da", "name": "Theory & Technique",
+     "desc": "Scales, chords, and why they work."},
+]
+
+
+def _forums_data():
+    data = repo_load_json(FORUMS_PATH, {"forums": {}})
+    forums = data.get("forums") or {}
+    if not forums:
+        forums = {f["id"]: dict(f, posts=[]) for f in DEFAULT_FORUMS}
+    return data, forums
+
+
+def _forum_update(fn, message="Forum update"):
+    if not _wall_token():
+        return False
+    data, forums = _forums_data()
+    fn(forums)
+    data["forums"] = forums
+    return repo_save_json(FORUMS_PATH, data, message)
+
+
+def _find_post(forums, fid, pid):
+    for p in forums.get(fid, {}).get("posts", []):
+        if p.get("id") == pid:
+            return p
+    return None
+
+
+def _find_comment(post, cid):
+    for c in post.get("comments", []):
+        if c.get("id") == cid:
+            return c, None
+        for r in c.get("replies", []):
+            if r.get("id") == cid:
+                return r, c
+    return None, None
+
+
+def _score(item):
+    v = item.get("votes", {})
+    return int(v.get("up", 0)) - int(v.get("down", 0))
+
+
+def _hot(item):
+    age_h = max(0.0, (time.time() - float(item.get("ts", 0))) / 3600.0)
+    return _score(item) / ((age_h + 2.0) ** 1.5)
+
+
+def _forum_vote(fid, pid, cid, kind):
+    votes = st.session_state.setdefault("forum_votes", {})
+    key = f"{fid}|{pid}|{cid or ''}"
+    cur = votes.get(key, 0)
+    new = 0 if (kind == "up" and cur == 1) or (kind == "down" and cur == -1) else (1 if kind == "up" else -1)
+    du = (1 if new == 1 else 0) - (1 if cur == 1 else 0)
+    dd = (1 if new == -1 else 0) - (1 if cur == -1 else 0)
+
+    def fn(forums):
+        post = _find_post(forums, fid, pid)
+        if not post:
+            return
+        target = post
+        if cid:
+            target, _par = _find_comment(post, cid)
+            if not target:
+                return
+        v = target.setdefault("votes", {"up": 0, "down": 0})
+        v["up"] = max(0, int(v.get("up", 0)) + du)
+        v["down"] = max(0, int(v.get("down", 0)) + dd)
+
+    if _forum_update(fn):
+        votes[key] = new
+        return True
+    return False
+
+
+def _vote_row(fid, pid, cid, item, key_prefix):
+    s = _score(item)
+    cur = st.session_state.get("forum_votes", {}).get(f"{fid}|{pid}|{cid or ''}", 0)
+    c1, c2, c3, _sp = st.columns([1, 1, 1, 7])
+    if c1.button("\u25b2" if cur == 1 else "\u25b3", key=f"{key_prefix}_up"):
+        if _forum_vote(fid, pid, cid, "up"):
+            st.rerun()
+        else:
+            st.warning("Couldn't vote \u2014 try again in a bit.")
+    c2.markdown(f"<div style='text-align:center;font-weight:bold;padding-top:0.4rem;'>{s}</div>",
+                unsafe_allow_html=True)
+    if c3.button("\u25bc" if cur == -1 else "\u25bd", key=f"{key_prefix}_dn"):
+        if _forum_vote(fid, pid, cid, "down"):
+            st.rerun()
+        else:
+            st.warning("Couldn't vote \u2014 try again in a bit.")
+
+
+def _forum_tab():
+    nav = st.session_state.setdefault("forum_nav", {"forum": None, "post": None})
+    _data, forums = _forums_data()
+    if nav.get("post"):
+        _forum_post_view(forums, nav["forum"], nav["post"])
+    elif nav.get("forum"):
+        _forum_posts_view(forums, nav["forum"])
+    else:
+        _forum_list_view(forums)
+
+
+def _forum_list_view(forums):
+    st.markdown("#### Forums")
+    st.caption("Pick your corner \u2014 or start the discussion.")
+    for fid, f in forums.items():
+        n = len(f.get("posts", []))
+        c1, c2 = st.columns([5, 1])
+        with c1:
+            st.markdown(f"### {f.get('icon', '\U0001f4ac')} {htmlmod.escape(f.get('name', fid))}")
+            st.caption(f.get("desc", ""))
+            st.caption(f"\U0001f4ac {n} post{'s' if n != 1 else ''}")
+        with c2:
+            st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
+            if st.button("Enter \u2192", key=f"fenter_{fid}"):
+                st.session_state["forum_nav"] = {"forum": fid, "post": None}
+                st.rerun()
+        st.divider()
+
+
+def _forum_posts_view(forums, fid):
+    f = forums.get(fid, {})
+    if st.button("\u2190 All forums"):
+        st.session_state["forum_nav"] = {"forum": None, "post": None}
+        st.rerun()
+    st.markdown(f"### {f.get('icon', '\U0001f4ac')} {htmlmod.escape(f.get('name', fid))}")
+    st.caption(f.get("desc", ""))
+    can_share = bool(_wall_token())
+    with st.expander("\u270f\ufe0f New post", expanded=False):
+        title = st.text_input("Title", max_chars=120, key=f"npt_{fid}")
+        body = st.text_area("Body", max_chars=2000, key=f"npb_{fid}")
+        photo = st.file_uploader("Photo (optional)", type=["jpg", "jpeg", "png"], key=f"npp_{fid}")
+        nm = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
+                           max_chars=30, key=f"npn_{fid}")
+        if st.button("Post", key=f"nps_{fid}"):
+            if not (title or "").strip() or not (body or "").strip() or not (nm or "").strip():
+                st.warning("Title, body, and name \u2014 fill those in.")
+            elif not can_share:
+                st.warning("The forum needs the shared wall connection.")
+            else:
+                post = {"id": uuid.uuid4().hex[:12], "title": title.strip()[:120],
+                        "body": body.strip()[:2000], "name": nm.strip()[:30],
+                        "ts": time.time(), "votes": {"up": 1, "down": 0}, "comments": []}
+                if photo is not None:
+                    with st.spinner("Uploading photo\u2026"):
+                        url = photo_upload(photo)
+                    if url:
+                        post["photo"] = url
+                    else:
+                        st.warning("Photo didn't upload \u2014 posting without it.")
+                def fn(fr, _p=post):
+                    fr.get(fid, {}).setdefault("posts", []).append(_p)
+                if _forum_update(fn, f"Forum post in {fid}"):
+                    st.session_state["wall_name"] = nm.strip()[:30]
+                    st.success("Posted! \U0001f3b8")
+                    st.rerun()
+                else:
+                    st.error("Couldn't post \u2014 try again.")
+    sort = st.radio("Sort", ["\U0001f525 Hot", "\U0001f195 New", "\U0001f3c6 Top"],
+                    horizontal=True, key=f"sort_{fid}")
+    posts = list(f.get("posts", []))
+    if sort == "\U0001f525 Hot":
+        posts.sort(key=_hot, reverse=True)
+    elif sort == "\U0001f195 New":
+        posts.sort(key=lambda p: p.get("ts", 0), reverse=True)
+    else:
+        posts.sort(key=_score, reverse=True)
+    if not posts:
+        st.info("Nothing here yet \u2014 start the discussion. \U0001f3b8")
+    profiles = _profiles()
+    for p in posts:
+        cc = len(p.get("comments", []))
+        flair = _flair(p.get("name", ""), profiles)
+        st.markdown(
+            f"<div class='tool-card' style='margin-bottom:0.15rem;'>"
+            f"<div style='display:flex;gap:0.6rem;align-items:baseline;'>"
+            f"<b style='color:#e94560;font-size:1.05rem;'>{_score(p)}</b>"
+            f"<div><b>{htmlmod.escape(p.get('title', '')[:120])}</b>"
+            f"<div style='color:#8a8a9e;font-size:0.8rem;'>"
+            f"{htmlmod.escape(p.get('name', '?')[:30])}{flair} \u00b7 {_ago(p.get('ts', 0))} \u00b7 "
+            f"\U0001f4ac {cc}</div></div></div></div>",
+            unsafe_allow_html=True)
+        if st.button("Open \u2192", key=f"open_{fid}_{p.get('id')}"):
+            st.session_state["forum_nav"] = {"forum": fid, "post": p.get("id")}
+            st.rerun()
+
+
+def _comment_view(forums, fid, pid, c, profiles, depth):
+    cid = c.get("id")
+    flair = _flair(c.get("name", ""), profiles)
+    wrap = ("<div style='margin-left:1.1rem;border-left:2px solid #3a3a4a;"
+            "padding-left:0.6rem;margin-top:0.4rem;'>" if depth else "<div style='margin-top:0.4rem;'>")
+    st.markdown(
+        f"{wrap}<b>{htmlmod.escape(c.get('name', '?')[:30])}</b>{flair} "
+        f"<span style='color:#8a8a9e;font-size:0.8rem;'>{_ago(c.get('ts', 0))}</span><br>"
+        f"{htmlmod.escape(c.get('text', '')[:1000]).replace(chr(10), '<br>')}</div>",
+        unsafe_allow_html=True)
+    _vote_row(fid, pid, cid, c, f"cv_{cid}")
+    if depth == 0:
+        with st.expander("\u21a9\ufe0f Reply", expanded=False):
+            rnm = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
+                                max_chars=30, key=f"rn_{cid}")
+            rtx = st.text_input("Write a reply\u2026", max_chars=500, key=f"rt_{cid}")
+            if st.button("Reply", key=f"rs_{cid}"):
+                if not (rnm or "").strip() or not (rtx or "").strip():
+                    st.warning("Name and reply needed.")
+                elif not _wall_token():
+                    st.warning("The forum needs the shared wall connection.")
+                else:
+                    r = {"id": uuid.uuid4().hex[:12], "name": rnm.strip()[:30],
+                         "text": rtx.strip()[:500], "ts": time.time(),
+                         "votes": {"up": 0, "down": 0}, "replies": []}
+                    def fn(fr, _r=r):
+                        post = _find_post(fr, fid, pid)
+                        if post:
+                            tgt, _par = _find_comment(post, cid)
+                            if tgt:
+                                tgt.setdefault("replies", []).append(_r)
+                    if _forum_update(fn, "Forum reply"):
+                        st.session_state["wall_name"] = rnm.strip()[:30]
+                        st.rerun()
+                    else:
+                        st.error("Couldn't post \u2014 try again.")
+    for r in sorted(c.get("replies", []), key=_score, reverse=True):
+        _comment_view(forums, fid, pid, r, profiles, depth + 1)
+
+
+def _forum_post_view(forums, fid, pid):
+    p = _find_post(forums, fid, pid)
+    if not p:
+        st.warning("Post not found.")
+        if st.button("\u2190 Back"):
+            st.session_state["forum_nav"] = {"forum": fid, "post": None}
+            st.rerun()
+        return
+    if st.button(f"\u2190 {htmlmod.escape(forums.get(fid, {}).get('name', 'Forum'))}"):
+        st.session_state["forum_nav"] = {"forum": fid, "post": None}
+        st.rerun()
+    profiles = _profiles()
+    flair = _flair(p.get("name", ""), profiles)
+    st.markdown(f"## {htmlmod.escape(p.get('title', '')[:120])}")
+    st.caption(f"{htmlmod.escape(p.get('name', '?')[:30])}{flair} \u00b7 {_ago(p.get('ts', 0))}")
+    _vote_row(fid, pid, None, p, f"pv_{pid}")
+    st.write(p.get("body", "")[:2000])
+    if p.get("photo"):
+        st.image(p["photo"])
+    st.markdown("### \U0001f4ac Comments")
+    cnm = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
+                        max_chars=30, key=f"cn_{pid}")
+    ctxt = st.text_area("Add a comment", max_chars=1000, key=f"ct_{pid}")
+    if st.button("Comment", key=f"cs_{pid}"):
+        if not (cnm or "").strip() or not (ctxt or "").strip():
+            st.warning("Name and comment needed.")
+        elif not _wall_token():
+            st.warning("The forum needs the shared wall connection.")
+        else:
+            c = {"id": uuid.uuid4().hex[:12], "name": cnm.strip()[:30],
+                 "text": ctxt.strip()[:1000], "ts": time.time(),
+                 "votes": {"up": 0, "down": 0}, "replies": []}
+            def fn(fr, _c=c):
+                post = _find_post(fr, fid, pid)
+                if post:
+                    post.setdefault("comments", []).append(_c)
+            if _forum_update(fn, "Forum comment"):
+                st.session_state["wall_name"] = cnm.strip()[:30]
+                st.rerun()
+            else:
+                st.error("Couldn't post \u2014 try again.")
+    for c in sorted(p.get("comments", []), key=_score, reverse=True):
+        _comment_view(forums, fid, pid, c, profiles, depth=0)
+        st.divider()
+
 def page_community():
     st.markdown('<div class="hero"><h1>\U0001f918 SIX-STRING SOCIAL</h1>'
                 '<p>Profiles, the wall, gigs, jobs \u0026 jam buddies \u2014 your guitar crew.</p></div>',
                 unsafe_allow_html=True)
-    t1, t2, t3, t4 = st.tabs(["\U0001f4ac Wall", "\U0001f511 Join", "\U0001f464 Profiles", "\U0001f3b8 Board"])
+    t1, t2, t3, t4, t5 = st.tabs(["\U0001f4ac Wall", "\U0001f5e8\ufe0f Forum", "\U0001f511 Join", "\U0001f464 Profiles", "\U0001f3b8 Board"])
     with t1:
         _wall_tab()
     with t2:
-        _join_tab()
+        _forum_tab()
     with t3:
-        _profiles_tab()
+        _join_tab()
     with t4:
+        _profiles_tab()
+    with t5:
         _board_tab()
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
