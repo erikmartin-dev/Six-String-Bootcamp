@@ -891,7 +891,7 @@ document.getElementById('eMic').addEventListener('click', async (ev)=>{
         eH.textContent='you: '+Math.round(f)+' Hz \u00b7 '+(cents>0?'+':'')+cents+'\u00a2 '+dir;
         const a=Math.abs(cents);
         if(a<=20){
-          eV.textContent='\uD83C\uDF96\uFE0F NAILED IT!'; eV.style.color='#4ade80';
+          eV.textContent='\\uD83C\\uDF96\\uFE0F NAILED IT!'; eV.style.color='#4ade80';
           if(!eScored){ eScored=true; eRounds++; eNailed++; eS.textContent='rounds: '+eRounds+' \u00b7 nailed: '+eNailed; }
         } else if(a<=50){
           eV.textContent='close \u2014 a touch '+(cents>0?'lower':'higher'); eV.style.color='#fbbf24';
@@ -1018,7 +1018,7 @@ function pFinish(){
   pDone=true; pTimerOn=false;
   const secs=Math.round((Date.now()-pStartT)/1000);
   pStep.textContent='Complete';
-  pPrompt.textContent='\uD83C\uDF96\uFE0F PRACTICE PASSED';
+  pPrompt.textContent='\\uD83C\\uDF96\\uFE0F PRACTICE PASSED';
   pPrompt.style.color='#4ade80';
   pHeard.textContent=PSTEPS.length+' for '+PSTEPS.length+' \u00b7 '+secs+' seconds';
   pFeed.textContent='Claim your badge below \u2014 then it\u2019s on to the next lesson.';
