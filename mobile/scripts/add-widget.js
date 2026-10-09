@@ -22,6 +22,19 @@ copy(`${WIDGET}/MainActivity.java`, `${ANDROID}/java/${PKG}/MainActivity.java`);
 // 3. Widget resources
 copy(`${WIDGET}/res/layout/widget_tuner.xml`, `${ANDROID}/res/layout/widget_tuner.xml`);
 copy(`${WIDGET}/res/xml/tuner_widget_info.xml`, `${ANDROID}/res/xml/tuner_widget_info.xml`);
+// strings.xml: merge (the generated project already has one with the app name)
+{
+  const dest = `${ANDROID}/res/values/strings.xml`;
+  let s = fs.readFileSync(dest, 'utf8');
+  if (!s.includes('name="widget_tuner_desc"')) {
+    s = s.replace('</resources>',
+      '    <string name="widget_tuner_desc">Open Six-String Bootcamp straight into the tuner</string>\n</resources>');
+    fs.writeFileSync(dest, s);
+    console.log('strings.xml merged: widget_tuner_desc added');
+  } else {
+    console.log('strings.xml already has widget_tuner_desc');
+  }
+}
 
 // 4. Manifest: register the widget receiver
 const manifest = `${ANDROID}/AndroidManifest.xml`;
