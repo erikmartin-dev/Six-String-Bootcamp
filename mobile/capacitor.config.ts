@@ -8,7 +8,7 @@ const config: CapacitorConfig = {
   webDir: 'www',
   server: {
     // Live app URL. The www/index.html fallback only shows if this is unreachable.
-    url: 'https://sixstringbootcamp.com',
+    url: 'https://six-string-bootcamp-heagexcrctnpnsbnwulajg.streamlit.app',
     cleartext: false,
   },
   android: {
