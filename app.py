@@ -628,73 +628,179 @@ btn.addEventListener('click',()=>{ mTimer?stop():start(); });
 </script>
 """
 
-TUNER_HTML = """
-<div style="text-align:center;padding:8px;">
-  <div id="tNote" style="font-size:3.2rem;font-weight:700;color:#e94560;">–</div>
-  <div id="tCents" style="color:#a0a0a0;margin-bottom:6px;">press START and play a string</div>
-  <div style="width:90%;height:10px;background:#16213e;border-radius:6px;margin:0 auto;position:relative;overflow:hidden;">
-    <div id="tNeedle" style="position:absolute;top:0;bottom:0;left:50%;width:4px;background:#e94560;border-radius:2px;"></div>
-  </div>
-  <div style="display:flex;justify-content:space-between;width:90%;margin:4px auto 0;color:#5a5a72;font-size:0.8rem;">
-    <span>-50¢</span><span>in tune</span><span>+50¢</span>
-  </div>
-  <button id="tBtn" style="margin-top:10px;background:#e94560;color:#fff;border:none;border-radius:10px;
-    padding:10px 26px;font-size:1rem;font-weight:700;cursor:pointer;">START TUNER</button>
-  <div style="color:#5a5a72;font-size:0.8rem;margin-top:8px;">needs microphone access · works on localhost / HTTPS</div>
-</div>
-<script>
-const NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-let tRunning=false;
-const nEl=document.getElementById('tNote'), cEl=document.getElementById('tCents'),
-      needle=document.getElementById('tNeedle'), tBtn=document.getElementById('tBtn');
-function autoCorrelate(buf,sr){
-  let SIZE=buf.length, rms=0;
-  for(let i=0;i<SIZE;i++) rms+=buf[i]*buf[i];
-  if(Math.sqrt(rms/SIZE)<0.01) return -1;
-  let r1=0,r2=SIZE-1;
-  const b=buf.slice(0);
-  for(let i=0;i<SIZE/2;i++) if(Math.abs(b[i])<0.2){b[i]=0;r1=i;}
-  for(let i=1;i<SIZE/2;i++) if(Math.abs(b[SIZE-i])<0.2){b[SIZE-i]=0;r2=SIZE-i;}
-  const b2=b.slice(r1,r2); SIZE=b2.length;
-  const c=new Array(SIZE).fill(0);
-  for(let i=0;i<SIZE;i++) for(let j=0;j<SIZE-i;j++) c[i]+=b2[j]*b2[j+i];
-  let d=0; while(d<SIZE-1 && c[d]>c[d+1]) d++;
-  let maxv=-1,maxp=-1;
-  for(let i=d;i<SIZE;i++) if(c[i]>maxv){maxv=c[i];maxp=i;}
-  let T0=maxp;
+_TUNER_STRINGS = [["E", 82.41], ["A", 110.00], ["D", 146.83],
+                  ["G", 196.00], ["B", 246.94], ["e", 329.63]]
+_TUNER_THICK = [5, 4.5, 4, 3, 2.2, 1.6]
+
+
+def _tuner_html(p):
+    """String-by-string tuner panel. Tap a string to hear its reference pitch;
+    the mic grades it: green + check when in tune, red + arrows otherwise."""
+    rows = []
+    for i, (nm, fr) in enumerate(_TUNER_STRINGS):
+        rows.append(
+            f'<div class="{p}-srow" data-i="{i}" style="display:flex;align-items:center;gap:10px;'
+            f'padding:7px 10px;border-radius:10px;cursor:pointer;border:2px solid transparent;">'
+            f'<span style="width:22px;font-weight:800;color:#fff;font-size:15px;">{nm}</span>'
+            f'<div style="flex:1;height:{_TUNER_THICK[i]}px;background:#3a3a52;border-radius:3px;"></div>'
+            f'<span style="color:#8a8a9e;font-size:11px;">{fr:.2f} Hz</span></div>'
+        )
+    return (
+        '<div style="text-align:center;padding:10px 6px;">'
+        '<div style="font-size:12px;color:#8a8a9e;margin-bottom:6px;">tap a string to hear its pitch</div>'
+        + "".join(rows) +
+        f'<div id="{p}Note" style="font-size:2.6rem;font-weight:800;color:#e94560;margin-top:8px;">&ndash;</div>'
+        f'<div id="{p}Status" style="font-size:1.05rem;font-weight:800;min-height:1.5em;"></div>'
+        f'<div id="{p}Cents" style="color:#a0a0a0;font-size:12px;margin-bottom:6px;min-height:1.2em;">select a string, then press START</div>'
+        f'<div style="width:92%;height:10px;background:#16213e;border-radius:6px;margin:0 auto;position:relative;overflow:hidden;">'
+        f'<div id="{p}Needle" style="position:absolute;top:0;bottom:0;left:50%;width:4px;background:#e94560;border-radius:2px;"></div></div>'
+        f'<div style="margin-top:10px;display:flex;gap:10px;justify-content:center;align-items:center;">'
+        f'<button id="{p}Btn" style="background:#e94560;color:#fff;border:none;border-radius:10px;padding:10px 26px;font-size:1rem;font-weight:700;cursor:pointer;">START</button>'
+        f'<label style="color:#8a8a9e;font-size:12px;cursor:pointer;"><input type="checkbox" id="{p}Auto" checked style="vertical-align:middle;"> auto-advance</label>'
+        f'</div>'
+        f'<div style="color:#5a5a72;font-size:11px;margin-top:8px;">needs microphone access</div>'
+        f'</div>'
+    )
+
+
+def _tuner_js(p, S, DOC, WIN, RAF, NAV, declare):
+    """JS for the string tuner. p: id prefix. S: JS expr for the state object.
+    DOC/WIN/RAF/NAV: JS exprs for document/window/rAF/navigator in this context."""
+    js = r'''
+DECLARE
+(function(){
+var NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+var STR=[["E",82.41],["A",110.00],["D",146.83],["G",196.00],["B",246.94],["e",329.63]];
+var nEl=DOC.getElementById('__P__Note'),sEl=DOC.getElementById('__P__Status'),
+    cEl=DOC.getElementById('__P__Cents'),ndl=DOC.getElementById('__P__Needle'),
+    btn=DOC.getElementById('__P__Btn'),auto=DOC.getElementById('__P__Auto');
+var rows=DOC.querySelectorAll('.__P__-srow');
+function acor(buf,sr){
+  var SIZE=buf.length,rms=0,i;
+  for(i=0;i<SIZE;i++)rms+=buf[i]*buf[i];
+  if(Math.sqrt(rms/SIZE)<0.01)return -1;
+  var r1=0,r2=SIZE-1,b=buf.slice(0);
+  for(i=0;i<SIZE/2;i++)if(Math.abs(b[i])<0.2){b[i]=0;r1=i;}
+  for(i=1;i<SIZE/2;i++)if(Math.abs(b[SIZE-i])<0.2){b[SIZE-i]=0;r2=SIZE-i;}
+  var b2=b.slice(r1,r2);SIZE=b2.length;
+  var c=new Array(SIZE).fill(0);
+  for(i=0;i<SIZE;i++)for(var j=0;j<SIZE-i;j++)c[i]+=b2[j]*b2[j+i];
+  var dd=0;while(dd<SIZE-1&&c[dd]>c[dd+1])dd++;
+  var maxv=-1,maxp=-1;
+  for(i=dd;i<SIZE;i++)if(c[i]>maxv){maxv=c[i];maxp=i;}
+  var T0=maxp;
   if(T0>0&&T0<SIZE-1){
-    const x1=c[T0-1],x2=c[T0],x3=c[T0+1], aa=(x1+x3-2*x2)/2, bb=(x3-x1)/2;
-    if(aa) T0=T0-bb/(2*aa);
+    var x1=c[T0-1],x2=c[T0],x3=c[T0+1],aa=(x1+x3-2*x2)/2,bb=(x3-x1)/2;
+    if(aa)T0=T0-bb/(2*aa);
   }
   return sr/T0;
 }
-tBtn.addEventListener('click', async ()=>{
-  if(tRunning) return;
+function paintRow(){
+  rows.forEach(function(r){r.style.borderColor='transparent';r.style.background='transparent';});
+  var r=rows[__S__.sel];
+  if(r)r.style.background='#1f1f33';
+}
+function playRef(i){
   try{
-    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
-    const ctx=new (window.AudioContext||window.webkitAudioContext)();
-    const src=ctx.createMediaStreamSource(stream), an=ctx.createAnalyser();
-    an.fftSize=2048; src.connect(an);
-    const buf=new Float32Array(an.fftSize);
-    tRunning=true; tBtn.textContent='LISTENING…'; tBtn.style.background='#4ade80';
-    (function tick(){
-      an.getFloatTimeDomainData(buf);
-      const f=autoCorrelate(buf,ctx.sampleRate);
-      if(f>40&&f<1200){
-        const n=Math.round(12*Math.log2(f/440))+69;
-        const ref=440*Math.pow(2,(n-69)/12);
-        const cents=Math.round(1200*Math.log2(f/ref));
-        nEl.textContent=NAMES[n%12];
-        nEl.style.color=Math.abs(cents)<6?'#4ade80':'#e94560';
-        cEl.textContent=(cents>0?'+':'')+cents+'¢ '+(Math.abs(cents)<6?'— in tune':(cents<0?'— tune up':'— tune down'));
-        needle.style.left=(50+Math.max(-50,Math.min(50,cents)))+'%';
-      }
-      if(tRunning) requestAnimationFrame(tick);
-    })();
-  }catch(e){ cEl.textContent='microphone blocked — allow access and retry'; }
+    var AC=WIN.AudioContext||WIN.webkitAudioContext;
+    __S__.refCtx=__S__.refCtx||new AC();
+    var ctx=__S__.refCtx;
+    if(ctx.resume)ctx.resume();
+    var o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='triangle';o.frequency.value=STR[i][1];
+    var t=ctx.currentTime;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.5,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+1.4);
+    o.connect(g);g.connect(ctx.destination);
+    o.start(t);o.stop(t+1.5);
+  }catch(e){}
+}
+function sel(i,silent){
+  __S__.sel=i;__S__.okSince=0;
+  paintRow();
+  if(!silent)playRef(i);
+  cEl.textContent='now tune the '+STR[i][0]+' string';
+}
+function tick(){
+  if(!__S__.running||!__S__.an)return;
+  __S__.an.getFloatTimeDomainData(__S__.buf);
+  var f=acor(__S__.buf,__S__.ctx.sampleRate);
+  var target=STR[__S__.sel][1];
+  if(f>40&&f<1200){
+    var cents=Math.round(1200*Math.log2(f/target));
+    var nn=Math.round(12*Math.log2(f/440))+69;
+    nEl.textContent=NAMES[nn%12];
+    ndl.style.left=(50+Math.max(-50,Math.min(50,cents)))+'%';
+    var r=rows[__S__.sel];
+    if(Math.abs(cents)<=6){
+      nEl.style.color='#4ade80';ndl.style.background='#4ade80';
+      sEl.textContent='\u2713 IN TUNE';sEl.style.color='#4ade80';
+      cEl.textContent=STR[__S__.sel][0]+' string \u00b7 '+cents+'\u00a2';
+      if(r)r.style.borderColor='#4ade80';
+      var now=Date.now();
+      if(!__S__.okSince)__S__.okSince=now;
+      if(auto.checked&&now-__S__.okSince>1200&&__S__.sel<5){sel(__S__.sel+1);}
+    }else{
+      __S__.okSince=0;
+      nEl.style.color='#e94560';ndl.style.background='#e94560';
+      var up=cents<0;
+      sEl.textContent=up?'\u2191 TUNE UP':'\u2193 TUNE DOWN';
+      sEl.style.color='#e94560';
+      cEl.textContent=STR[__S__.sel][0]+' string \u00b7 '+(cents>0?'+':'')+cents+'\u00a2 '+(up?'(tighten the peg)':'(loosen the peg)');
+      if(r)r.style.borderColor='#e94560';
+    }
+  }else{
+    nEl.textContent='\u2013';sEl.textContent='';
+    cEl.textContent='listening\u2026 play the '+STR[__S__.sel][0]+' string';
+  }
+  RAF(tick);
+}
+btn.onclick=async function(){
+  if(__S__.running){
+    __S__.running=false;
+    if(__S__.stream)__S__.stream.getTracks().forEach(function(t){t.stop();});
+    if(__S__.ctx)__S__.ctx.close();
+    __S__.stream=null;__S__.ctx=null;__S__.an=null;__S__.okSince=0;
+    btn.textContent='START';btn.style.background='#e94560';
+    sEl.textContent='';
+    cEl.textContent='select a string, then press START';
+    paintRow();
+    return;
+  }
+  try{
+    __S__.stream=await NAV.mediaDevices.getUserMedia({audio:true});
+    __S__.ctx=new (WIN.AudioContext||WIN.webkitAudioContext)();
+    var src=__S__.ctx.createMediaStreamSource(__S__.stream);
+    __S__.an=__S__.ctx.createAnalyser();
+    __S__.an.fftSize=2048;src.connect(__S__.an);
+    __S__.buf=new Float32Array(__S__.an.fftSize);
+    __S__.running=true;__S__.okSince=0;
+    btn.textContent='STOP';btn.style.background='#4ade80';
+    RAF(tick);
+  }catch(e){cEl.textContent='microphone blocked \u2014 allow access and retry';}
+};
+rows.forEach(function(r){
+  r.onclick=function(){sel(parseInt(r.getAttribute('data-i'),10));};
 });
-</script>
-"""
+sel(0,true);
+})();
+'''
+    return (js.replace("DECLARE", declare)
+              .replace("__P__", p).replace("__S__", S)
+              .replace("__DOC__", DOC).replace("__WIN__", WIN)
+              .replace("__RAF__", RAF).replace("__NAV__", NAV))
+
+
+TUNER_HTML = (
+    _tuner_html("t")
+    + "<script>"
+    + _tuner_js("t", "TSTATE", "document", "window",
+                "requestAnimationFrame", "navigator",
+                "var TSTATE={running:false,sel:0,stream:null,ctx:null,an:null,"
+                "buf:null,okSince:0,refCtx:null};")
+    + "</script>"
+)
 
 
 EAR_TRAINER_HTML = """
@@ -804,7 +910,7 @@ def metronome():
 
 
 def tuner():
-    components.html(TUNER_HTML, height=380, scrolling=False)
+    components.html(TUNER_HTML, height=470, scrolling=False)
 
 
 # ----------------------------------------------------------------------------
@@ -2474,6 +2580,10 @@ def sgt_bubble():
     the mic survives Streamlit reruns and can always be stopped."""
     if not st.session_state.get("instructor_on", True):
         return
+    _thw = _tuner_html("wt")
+    _tjw = _tuner_js("wt", "P._sgtT2", "d", "P.window", "P.requestAnimationFrame",
+                     "P.navigator",
+                     "P._sgtT2=P._sgtT2||{running:false,sel:0,stream:null,ctx:null,an:null,buf:null,okSince:0,refCtx:null};")
     html = """<script>
 (function() {
 var d = window.parent.document;
@@ -2556,15 +2666,7 @@ root.innerHTML = '<style>' + css + '</style>'
  + '<button id="sgt-tab-social">💬 Social</button>'
  + '<button id="sgt-tab-martin">🤖 Martin</button>'
  + '</div>'
- + '<div id="sgt-body-tuner" class="sgt-body" style="display:flex;">'
- + '<div style="text-align:center;padding:16px 10px;">'
- + '<div id="wtNote" style="font-size:2.8rem;font-weight:700;color:#e94560;">\u2013</div>'
- + '<div id="wtCents" style="color:#a0a0a0;margin-bottom:8px;font-size:12px;">press START and play a string</div>'
- + '<div style="width:90%;height:10px;background:#16213e;border-radius:6px;margin:0 auto;position:relative;overflow:hidden;">'
- + '<div id="wtNeedle" style="position:absolute;top:0;bottom:0;left:50%;width:4px;background:#e94560;border-radius:2px;"></div></div>'
- + '<button id="wtBtn" style="margin-top:14px;background:#e94560;color:#fff;border:none;border-radius:10px;padding:10px 26px;font-size:1rem;font-weight:700;cursor:pointer;">START TUNER</button>'
- + '<div style="color:#5a5a72;font-size:11px;margin-top:8px;">needs microphone access</div>'
- + '</div></div>'
++ '<div id="sgt-body-tuner" class="sgt-body" style="display:flex;overflow-y:auto;">' + %%TUNERHTML%% + '</div>'
  + '<div id="sgt-body-social" class="sgt-body">'
  + '<div id="sgt-social-feed"></div>'
  + '<div id="sgt-social-foot"><button id="sgt-refresh">🔄 Refresh</button>'
@@ -2594,72 +2696,7 @@ function showTab(which) {
 d.getElementById('sgt-tab-tuner').onclick = function(){ showTab('tuner'); };
 d.getElementById('sgt-tab-social').onclick = function(){ showTab('social'); };
 d.getElementById('sgt-tab-martin').onclick = function(){ showTab('martin'); };
-/* ---------- tuner (state on parent window: survives Streamlit reruns) ---------- */
-var NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-P._sgtT = P._sgtT || {running:false, stream:null, ctx:null};
-var nEl = d.getElementById('wtNote'), cEl = d.getElementById('wtCents'),
-    needle = d.getElementById('wtNeedle'), tBtn = d.getElementById('wtBtn');
-function wAutoCorrelate(buf, sr) {
-  var SIZE = buf.length, rms = 0, i;
-  for (i = 0; i < SIZE; i++) rms += buf[i]*buf[i];
-  if (Math.sqrt(rms/SIZE) < 0.01) return -1;
-  var r1 = 0, r2 = SIZE-1;
-  var b = buf.slice(0);
-  for (i = 0; i < SIZE/2; i++) if (Math.abs(b[i]) < 0.2) { b[i] = 0; r1 = i; }
-  for (i = 1; i < SIZE/2; i++) if (Math.abs(b[SIZE-i]) < 0.2) { b[SIZE-i] = 0; r2 = SIZE-i; }
-  var b2 = b.slice(r1, r2); SIZE = b2.length;
-  var c = new Array(SIZE).fill(0);
-  for (i = 0; i < SIZE; i++) for (var j = 0; j < SIZE-i; j++) c[i] += b2[j]*b2[j+i];
-  var dd = 0; while (dd < SIZE-1 && c[dd] > c[dd+1]) dd++;
-  var maxv = -1, maxp = -1;
-  for (i = dd; i < SIZE; i++) if (c[i] > maxv) { maxv = c[i]; maxp = i; }
-  var T0 = maxp;
-  if (T0 > 0 && T0 < SIZE-1) {
-    var x1 = c[T0-1], x2 = c[T0], x3 = c[T0+1], aa = (x1+x3-2*x2)/2, bb = (x3-x1)/2;
-    if (aa) T0 = T0 - bb/(2*aa);
-  }
-  return sr/T0;
-}
-function wTick() {
-  var T = P._sgtT;
-  if (!T.running || !T.an) return;
-  T.an.getFloatTimeDomainData(T.buf);
-  var f = wAutoCorrelate(T.buf, T.ctx.sampleRate);
-  if (f > 40 && f < 1200) {
-    var n = Math.round(12*Math.log2(f/440))+69;
-    var ref = 440*Math.pow(2,(n-69)/12);
-    var cents = Math.round(1200*Math.log2(f/ref));
-    nEl.textContent = NAMES[n%12];
-    nEl.style.color = Math.abs(cents) < 6 ? '#4ade80' : '#e94560';
-    cEl.textContent = (cents > 0 ? '+' : '') + cents + '\u00a2 '
-      + (Math.abs(cents) < 6 ? '\u2014 in tune' : (cents < 0 ? '\u2014 tune up' : '\u2014 tune down'));
-    needle.style.left = (50 + Math.max(-50, Math.min(50, cents))) + '%';
-  }
-  P.requestAnimationFrame(wTick);
-}
-tBtn.onclick = async function() {
-  var T = P._sgtT;
-  if (T.running) {
-    T.running = false;
-    if (T.stream) T.stream.getTracks().forEach(function(t){ t.stop(); });
-    if (T.ctx) T.ctx.close();
-    T.stream = null; T.ctx = null; T.an = null;
-    tBtn.textContent = 'START TUNER'; tBtn.style.background = '#e94560';
-    cEl.textContent = 'press START and play a string';
-    return;
-  }
-  try {
-    T.stream = await P.navigator.mediaDevices.getUserMedia({audio:true});
-    T.ctx = new (P.window.AudioContext || P.window.webkitAudioContext)();
-    var src = T.ctx.createMediaStreamSource(T.stream);
-    T.an = T.ctx.createAnalyser();
-    T.an.fftSize = 2048; src.connect(T.an);
-    T.buf = new Float32Array(T.an.fftSize);
-    T.running = true;
-    tBtn.textContent = 'STOP'; tBtn.style.background = '#4ade80';
-    P.requestAnimationFrame(wTick);
-  } catch(e) { cEl.textContent = 'microphone blocked \u2014 allow access and retry'; }
-};
+%%TUNERJS%%
 /* ---------- social mini-feed ---------- */
 function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
 function loadSocial() {
@@ -2740,7 +2777,8 @@ d.getElementById('sgt-in').addEventListener('keydown', function(e) { if (e.key =
   d.getElementById('sgt-chips').appendChild(b);
 });
 })();
-</script>""";
+</script>"""
+    html = html.replace("%%TUNERHTML%%", json.dumps(_thw)).replace("%%TUNERJS%%", _tjw)
     components.html(html, height=0, scrolling=False)
 # Standalone Six-String Social mode. social.py sets SIXSTRING_SOCIAL=1 and then
 # imports this module: same community data, its own front door, no bootcamp chrome.
