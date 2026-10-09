@@ -1430,6 +1430,139 @@ WALL_LOCAL = os.path.join(DATA_DIR, "wall.json")
 WALL_HEADERS = {"Accept": "application/vnd.github+json",
                 "X-GitHub-Api-Version": "2022-11-28"}
 
+PROFILES_PATH = "community/profiles.json"
+BOARD_PATH = "community/board.json"
+PHOTOS_DIR = "community/photos"
+
+STICKERS = ["\U0001f918", "\U0001f3b8", "\U0001f525", "\U0001f44f", "\U0001f62e", "\U00002764\ufe0f"]
+AVATAR_EMOJI = ["\U0001f3b8", "\U0001f918", "\U0001f941", "\U0001f3a4", "\U0001f3b9",
+                "\U0001f3ba", "\U0001f3bb", "\U0001f3a7", "\U0001f3b5", "\U0001f525",
+                "\U000026a1", "\U0001f920", "\U0001f985", "\U0001f43a", "\U0001f335"]
+SKILL_LEVELS = ["Just starting", "Beginner", "Intermediate", "Advanced", "Gigging musician"]
+BOARD_KINDS = ["\U0001f918 Jam", "\U0001f3a4 Gig", "\U0001f4bc Job"]
+
+
+def _repo_api(path):
+    return f"https://api.github.com/repos/{WALL_REPO}/contents/{path}"
+
+
+def _repo_raw(path):
+    return f"https://raw.githubusercontent.com/{WALL_REPO}/main/{path}"
+
+
+def repo_load_json(path, default):
+    """Load a JSON doc from the repo (fresh with token, else public raw)."""
+    tok = _wall_token()
+    if tok and requests is not None:
+        try:
+            h = {**WALL_HEADERS, "Authorization": "Bearer " + tok}
+            cur = requests.get(_repo_api(path), headers=h, timeout=10).json()
+            if cur.get("content"):
+                return json.loads(base64.b64decode(cur["content"]).decode("utf-8", "replace"))
+        except Exception:
+            pass
+    if requests is not None:
+        try:
+            r = requests.get(_repo_raw(path), timeout=8)
+            if r.status_code == 200:
+                return r.json()
+        except Exception:
+            pass
+    return default
+
+
+def repo_save_json(path, data, message):
+    """Save a JSON doc to the repo (creates it if missing). Returns True on success."""
+    tok = _wall_token()
+    if not tok or requests is None:
+        return False
+    try:
+        h = {**WALL_HEADERS, "Authorization": "Bearer " + tok}
+        cur = requests.get(_repo_api(path), headers=h, timeout=10).json()
+        body = {"message": message,
+                "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode()).decode()}
+        if cur.get("sha"):
+            body["sha"] = cur["sha"]
+        r = requests.put(_repo_api(path), headers=h, json=body, timeout=15)
+        return r.status_code in (200, 201)
+    except Exception:
+        return False
+
+
+def photo_upload(file):
+    """Downscale and upload a photo to the repo. Returns the raw URL or None."""
+    tok = _wall_token()
+    if not tok or requests is None:
+        return None
+    try:
+        from PIL import Image
+        import io
+        img = Image.open(file).convert("RGB")
+        img.thumbnail((1200, 1200))
+        buf = io.BytesIO()
+        img.save(buf, "JPEG", quality=82)
+        data = buf.getvalue()
+        if not data or len(data) > 2500000:
+            return None
+        name = f"{uuid.uuid4().hex[:12]}.jpg"
+        h = {**WALL_HEADERS, "Authorization": "Bearer " + tok}
+        body = {"message": f"Community photo {name}",
+                "content": base64.b64encode(data).decode()}
+        r = requests.put(_repo_api(f"{PHOTOS_DIR}/{name}"), headers=h, json=body, timeout=30)
+        if r.status_code in (200, 201):
+            return _repo_raw(f"{PHOTOS_DIR}/{name}")
+    except Exception:
+        pass
+    return None
+
+
+def _wall_update_post(post_id, fn):
+    """Apply fn(post) to one wall post, remote or local. Returns True on success."""
+    def bump(psts):
+        for p in psts:
+            if p.get("id") == post_id:
+                fn(p)
+                return True
+        return False
+    if _wall_token():
+        return _wall_remote_update(bump)
+    data = load_json(WALL_LOCAL, {"posts": []})
+    if not bump(data.get("posts", [])):
+        return False
+    try:
+        save_json(WALL_LOCAL, data)
+        return True
+    except Exception:
+        return False
+
+
+def _profiles():
+    return repo_load_json(PROFILES_PATH, {"profiles": {}}).get("profiles", {})
+
+
+def _is_pro(name, profiles):
+    return profiles.get(name, {}).get("role") == "pro"
+
+
+def _flair(name, profiles):
+    prof = profiles.get(name, {})
+    if prof.get("role") == "pro":
+        return " \u2705 PRO"
+    if prof.get("tier") == "member":
+        return " \u2b50 MEMBER"
+    return ""
+
+
+def _badges_for(name, posts):
+    out = []
+    for p in posts:
+        if p.get("name") == name:
+            for b in p.get("badges", []):
+                if b not in out:
+                    out.append(b)
+    return sorted(out)
+
+
 
 def _wall_token():
     return (_secret("github_token") or "").strip()
@@ -1549,13 +1682,41 @@ def _ago(ts):
     return time.strftime("%b %d, %Y", time.localtime(float(ts)))
 
 
-def page_community():
-    st.markdown('<div class="hero"><h1>💬 COMMUNITY WALL</h1>'
-                '<p>Post your progress. Cheer on your fellow recruits.</p></div>',
-                unsafe_allow_html=True)
+
+def _profile_card(name, prof, posts):
+    c1, c2 = st.columns([1, 4])
+    with c1:
+        if prof.get("photo"):
+            st.image(prof["photo"], width=72)
+        else:
+            st.markdown(f"<div style='font-size:52px;line-height:1'>{prof.get('avatar', '\U0001f3b8')}</div>",
+                        unsafe_allow_html=True)
+    with c2:
+        if prof.get("role") == "pro":
+            flair = " \u2705 PRO"
+        elif prof.get("tier") == "member":
+            flair = " \u2b50 MEMBER"
+        else:
+            flair = ""
+        st.markdown(f"**{name}**{flair}")
+        if prof.get("role") == "pro" and prof.get("creds"):
+            st.caption("\U0001f3a4 " + prof["creds"])
+        bits = [b for b in (prof.get("level"), prof.get("city"), prof.get("genres")) if b]
+        if bits:
+            st.caption(" \u00b7 ".join(bits))
+        if prof.get("bio"):
+            st.write(prof["bio"])
+        badges = _badges_for(name, posts)
+        if badges:
+            st.caption(" ".join(f"\U0001f3c5 L{b}" for b in badges))
+
+
+def _wall_tab():
     posts, _readable = wall_load()
     can_share = bool(_wall_token())
     liked = st.session_state.setdefault("wall_liked", [])
+    stuck = st.session_state.setdefault("wall_stuck", [])
+    profiles = _profiles()
 
     st.markdown("### Shout it out")
     name = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
@@ -1563,6 +1724,7 @@ def page_community():
     text = st.text_area("What's happening?",
                         placeholder="Nailed my first clean G to C change today\u2026",
                         max_chars=500, height=90)
+    photo = st.file_uploader("Add a photo (optional)", type=["jpg", "jpeg", "png"])
     my_badges = sorted(st.session_state.get("badges", []))
     if my_badges:
         st.caption("Your badges ride along on your post: " +
@@ -1576,7 +1738,17 @@ def page_community():
             st.session_state["wall_name"] = name.strip()[:30]
             post = {"id": uuid.uuid4().hex[:12], "name": name.strip()[:30],
                     "text": text.strip()[:500], "badges": my_badges,
-                    "ts": time.time(), "likes": 0}
+                    "ts": time.time(), "likes": 0, "stickers": {}, "replies": []}
+            if photo is not None:
+                if not can_share:
+                    st.warning("Photos need the shared wall connection \u2014 posting without it.")
+                else:
+                    with st.spinner("Uploading photo\u2026"):
+                        url = photo_upload(photo)
+                    if url:
+                        post["photo"] = url
+                    else:
+                        st.warning("Photo didn't upload \u2014 posting without it.")
             if wall_publish(post):
                 if can_share:
                     st.session_state.setdefault("wall_just_posted", []).append(post)
@@ -1592,6 +1764,7 @@ def page_community():
                 "the shared wall is connected (one-time setup, two minutes).")
 
     st.markdown("### The wall")
+    show = st.radio("Show", ["All posts", "\U0001f3c5 Badge posts"], horizontal=True)
     mine = load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
     just = st.session_state.get("wall_just_posted", [])
     seen = {p.get("id") for p in posts} | {p.get("id") for p in mine}
@@ -1599,34 +1772,206 @@ def page_community():
     if len(extra) != len(just):
         st.session_state["wall_just_posted"] = extra
     feed = sorted(mine + extra + posts, key=lambda p: p.get("ts", 0), reverse=True)
+    if show != "All posts":
+        feed = [p for p in feed if p.get("badges")]
     if not feed:
         st.caption("The wall is quiet\u2026 be the first to post. \U0001f3b8")
     for p in feed:
         pid = p.get("id", "")
         nm = htmlmod.escape(str(p.get("name", "Recruit"))[:30])
         tx = htmlmod.escape(str(p.get("text", ""))[:500]).replace("\n", "<br>")
+        av = profiles.get(p.get("name"), {}).get("avatar", "\U0001f3b8")
         chips = " ".join(
             f"<span class='badge badge-free'>\U0001f3c5 L{b}</span>"
             for b in (p.get("badges") or [])[:12])
         chiprow = f"<div style='margin-top:0.3rem;'>{chips}</div>" if chips else ""
+        imgrow = (f"<div><img src='{p['photo']}' style='max-width:100%;border-radius:8px;"
+                  f"margin:0.35rem 0;'></div>" if p.get("photo") else "")
         st.markdown(
             f"<div class='tool-card' style='margin-bottom:0.15rem;'>"
             f"<div style='display:flex;justify-content:space-between;align-items:baseline;'>"
-            f"<b style='color:#e94560;'>{nm}</b>"
+            f"<b style='color:#e94560;'>{av} {nm}{_flair(p.get('name', ''), profiles)}</b>"
             f"<span style='color:#8a8a9e;font-size:0.8rem;'>{_ago(p.get('ts', 0))}</span></div>"
-            f"<div style='margin:0.35rem 0;'>{tx}</div>{chiprow}</div>",
+            f"<div style='margin:0.35rem 0;'>{tx}</div>{imgrow}{chiprow}</div>",
             unsafe_allow_html=True)
+        c_like, c_rest = st.columns([1, 5])
         likes = int(p.get("likes", 0) or 0)
-        if pid in liked:
-            st.button(f"\U0001f525 {likes}", key=f"wall_liked_{pid}", disabled=True)
-        elif st.button(f"\U0001f525 {likes}", key=f"wall_like_{pid}"):
-            if wall_like(pid):
-                liked.append(pid)
+        with c_like:
+            if pid in liked:
+                st.button(f"\U0001f525 {likes}", key=f"wall_liked_{pid}", disabled=True)
+            elif st.button(f"\U0001f525 {likes}", key=f"wall_like_{pid}"):
+                if wall_like(pid):
+                    liked.append(pid)
+                    st.rerun()
+                else:
+                    st.warning("Couldn't send the like \u2014 try again in a bit.")
+        with c_rest:
+            scols = st.columns(len(STICKERS))
+            for i, s in enumerate(STICKERS):
+                n = int((p.get("stickers") or {}).get(s, 0))
+                if scols[i].button(f"{s} {n}", key=f"st{pid}{i}"):
+                    key = pid + s
+                    if key in stuck:
+                        st.toast("Already gave that sticker.")
+                    elif _wall_update_post(pid, lambda post, e=s: post.setdefault("stickers", {}).update(
+                            {e: int(post.get("stickers", {}).get(e, 0)) + 1})):
+                        stuck.append(key)
+                        st.rerun()
+                    else:
+                        st.warning("Couldn't send the sticker \u2014 try again in a bit.")
+        replies = p.get("replies", []) or []
+        with st.expander(f"\U0001f4ac Replies ({len(replies)})"):
+            for r in sorted(replies, key=lambda x: x.get("ts", 0)):
+                rnm = htmlmod.escape(str(r.get("name", "?"))[:30])
+                rtx = htmlmod.escape(str(r.get("text", ""))[:300]).replace("\n", "<br>")
+                st.markdown(
+                    f"<b>{rnm}</b>{_flair(r.get('name', ''), profiles)} "
+                    f"<span style='color:#8a8a9e;font-size:0.8rem;'>{_ago(r.get('ts', 0))}</span>"
+                    f"<br>{rtx}", unsafe_allow_html=True)
+            rn = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
+                               key=f"rn_{pid}", max_chars=30)
+            rt = st.text_input("Write a reply\u2026", key=f"rt_{pid}", max_chars=300)
+            if st.button("Reply", key=f"rp_{pid}"):
+                if not (rn or "").strip() or not (rt or "").strip():
+                    st.warning("Name and reply needed.")
+                else:
+                    reply = {"id": uuid.uuid4().hex[:12], "name": rn.strip()[:30],
+                             "text": rt.strip()[:300], "ts": time.time()}
+                    if _wall_update_post(pid, lambda post, rp=reply: post.setdefault("replies", []).append(rp)):
+                        st.session_state["wall_name"] = rn.strip()[:30]
+                        st.rerun()
+                    else:
+                        st.warning("Couldn't send the reply \u2014 try again in a bit.")
+        st.divider()
+
+
+def _profiles_tab():
+    st.markdown("#### Your profile")
+    st.caption("18+ only \u2014 pick a name, an avatar, and tell the crew who you are.")
+    can_share = bool(_wall_token())
+    with st.form("profile_form"):
+        nm = st.text_input("Display name (use the same name you post with)", max_chars=30)
+        c1, c2 = st.columns(2)
+        with c1:
+            av = st.selectbox("Avatar", AVATAR_EMOJI)
+        with c2:
+            ph = st.file_uploader("Or upload a profile photo", type=["jpg", "jpeg", "png"])
+        bio = st.text_area("Bio", max_chars=200, placeholder="Rhythm player, into blues and classic rock\u2026")
+        c3, c4 = st.columns(2)
+        with c3:
+            lvl = st.selectbox("Skill level", SKILL_LEVELS)
+        with c4:
+            city = st.text_input("City (for gigs and jam buddies)", max_chars=40)
+        genres = st.text_input("Favorite genres", max_chars=80, placeholder="blues, rock, country")
+        is_pro = st.checkbox("I'm a professional musician")
+        creds = st.text_input("Pro credentials (shown on your \u2705 PRO flair)",
+                              placeholder="Touring guitarist, 20 years\u2026", max_chars=80)
+        age_ok = st.checkbox("I confirm I'm 18 or older")
+        st.caption("Member tier: Free \U0001f193 \u2014 paid memberships with exclusive stickers \u0026 flair are coming soon.")
+        save = st.form_submit_button("Save profile", use_container_width=True)
+    if save:
+        if not nm.strip():
+            st.warning("Pick a display name first.")
+        elif not age_ok:
+            st.warning("This community is 18+ \u2014 please confirm your age.")
+        elif not can_share:
+            st.warning("Profiles need the shared wall connection.")
+        else:
+            prof = {"avatar": av, "bio": bio.strip(), "level": lvl,
+                    "city": city.strip(), "genres": genres.strip(),
+                    "role": "pro" if is_pro else "student",
+                    "creds": creds.strip()[:80] if is_pro else "",
+                    "tier": "free", "ts": time.time()}
+            if ph is not None:
+                with st.spinner("Uploading photo\u2026"):
+                    url = photo_upload(ph)
+                if url:
+                    prof["photo"] = url
+                else:
+                    st.warning("Photo didn't upload \u2014 saving without it.")
+            data = repo_load_json(PROFILES_PATH, {"profiles": {}})
+            data.setdefault("profiles", {})[nm.strip()[:30]] = prof
+            if repo_save_json(PROFILES_PATH, data, f"Profile: {nm.strip()[:30]}"):
+                st.success("Profile live! \U0001f918")
                 st.rerun()
             else:
-                st.warning("Couldn't send the like \u2014 try again in a bit.")
+                st.error("Couldn't save \u2014 try again.")
+    st.markdown("### Members")
+    posts, _ = wall_load()
+    profiles = _profiles()
+    if not profiles:
+        st.info("No profiles yet \u2014 be the first. \U0001f918")
+    for name, prof in sorted(profiles.items()):
+        _profile_card(name, prof, posts)
+        st.divider()
 
 
+def _board_tab():
+    st.markdown("#### The musician board")
+    st.caption("Find jam buddies, post gigs, hire players \u2014 the whole musician community.")
+    can_share = bool(_wall_token())
+    with st.form("board_form", clear_on_submit=True):
+        nm = st.text_input("Your display name", max_chars=30)
+        c1, c2 = st.columns(2)
+        with c1:
+            kind = st.selectbox("Post type", BOARD_KINDS)
+        with c2:
+            city = st.text_input("City", max_chars=40)
+        headline = st.text_input("Headline", max_chars=80,
+                                 placeholder="Need a lead guitarist for Saturday night\u2026")
+        details = st.text_area("Details", max_chars=400,
+                               placeholder="Venue, pay, setlist, how to reach you\u2026")
+        go = st.form_submit_button("Post it \U0001f4cc", use_container_width=True)
+    if go:
+        if not nm.strip() or not headline.strip() or not details.strip():
+            st.warning("Name, headline, and details \u2014 fill those in.")
+        elif not can_share:
+            st.warning("The board needs the shared wall connection.")
+        else:
+            data = repo_load_json(BOARD_PATH, {"posts": []})
+            data.setdefault("posts", []).append({
+                "id": uuid.uuid4().hex[:12], "name": nm.strip()[:30], "kind": kind,
+                "city": city.strip(), "headline": headline.strip()[:80],
+                "details": details.strip()[:400], "ts": time.time()})
+            if repo_save_json(BOARD_PATH, data, f"Board post: {nm.strip()[:30]}"):
+                st.success("You're on the board! \U0001f4cc")
+                st.rerun()
+            else:
+                st.error("Couldn't save \u2014 try again.")
+    st.markdown("### On the board")
+    filt = st.radio("Show", ["All"] + BOARD_KINDS, horizontal=True)
+    posts = repo_load_json(BOARD_PATH, {"posts": []}).get("posts", [])
+    posts = sorted(posts, key=lambda x: x.get("ts", 0), reverse=True)
+    if filt != "All":
+        posts = [x for x in posts if x.get("kind") == filt]
+    if not posts:
+        st.info("Nothing here yet \u2014 put the first pin in the map. \U0001f4cd")
+    for x in posts:
+        when = _ago(x.get("ts", 0))
+        loc = htmlmod.escape(str(x.get("city", ""))[:40])
+        st.markdown(
+            f"<div class='tool-card' style='margin-bottom:0.4rem;'>"
+            f"<div style='display:flex;justify-content:space-between;align-items:baseline;'>"
+            f"<b style='color:#e94560;'>{x.get('kind', '')} {htmlmod.escape(str(x.get('headline', ''))[:80])}</b>"
+            f"<span style='color:#8a8a9e;font-size:0.8rem;'>{when}</span></div>"
+            f"<div style='color:#8a8a9e;font-size:0.85rem;margin:0.15rem 0;'>"
+            f"{htmlmod.escape(str(x.get('name', '?'))[:30])}" + (f" \u00b7 {loc}" if loc else "") + "</div>"
+            f"<div style='margin:0.35rem 0;'>{htmlmod.escape(str(x.get('details', ''))[:400]).replace(chr(10), '<br>')}</div>"
+            f"</div>",
+            unsafe_allow_html=True)
+
+
+def page_community():
+    st.markdown('<div class="hero"><h1>\U0001f4ac COMMUNITY</h1>'
+                '<p>Profiles, the wall, gigs, jobs \u0026 jam buddies \u2014 your guitar crew.</p></div>',
+                unsafe_allow_html=True)
+    t1, t2, t3 = st.tabs(["\U0001f4ac Wall", "\U0001f464 Profiles", "\U0001f3b8 Board"])
+    with t1:
+        _wall_tab()
+    with t2:
+        _profiles_tab()
+    with t3:
+        _board_tab()
 # ----------------------------------------------------------------------------
 # Router — top button nav, no sidebar
 # ----------------------------------------------------------------------------
