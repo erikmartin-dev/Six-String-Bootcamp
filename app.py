@@ -1397,16 +1397,16 @@ def page_tools():
                 unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown('<div class="tool-card"><h3 style="color:#e94560;">⏱️ Metronome</h3>',
+        st.markdown('<div class="tool-card" id="tool-metronome"><h3 style="color:#e94560;">⏱️ Metronome</h3>',
                     unsafe_allow_html=True)
         metronome()
         st.markdown('</div>', unsafe_allow_html=True)
     with c2:
-        st.markdown('<div class="tool-card"><h3 style="color:#e94560;">🎛️ Tuner</h3>',
+        st.markdown('<div class="tool-card" id="tool-tuner"><h3 style="color:#e94560;">🎛️ Tuner</h3>',
                     unsafe_allow_html=True)
         tuner()
         st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('<div class="tool-card"><h3 style="color:#e94560;">👂 Ear Trainer</h3>'
+    st.markdown('<div class="tool-card" id="tool-ear"><h3 style="color:#e94560;">👂 Ear Trainer</h3>'
                 '<p style="color:#a0a0a0;">Hear the note. Sing it back. Get scored. '
                 'Match your voice to the pitch — this is how ears are built.</p>',
                 unsafe_allow_html=True)
@@ -1438,8 +1438,17 @@ def _goto(page):
     st.session_state["_jump"] = True
 
 
+# Deep links for one-tap home-screen shortcuts: ?view=tuner|metronome|ear
+_DEEP_LINKS = {"tuner": ("Tools", "tool-tuner"), "metronome": ("Tools", "tool-metronome"),
+               "ear": ("Tools", "tool-ear"), "tools": ("Tools", None)}
 if "page" not in st.session_state:
     st.session_state["page"] = "Home"
+    try:
+        _view = str(st.query_params.get("view", "")).strip().lower()
+    except Exception:
+        _view = ""
+    if _view in _DEEP_LINKS:
+        st.session_state["page"], st.session_state["_scroll_to"] = _DEEP_LINKS[_view]
 
 st.markdown('<div class="navbtn">', unsafe_allow_html=True)
 row1, row2 = st.columns(6), st.columns(5)
@@ -1464,6 +1473,15 @@ if st.session_state.pop("_jump", False):
         height=0, scrolling=False)
 
 PAGES[st.session_state["page"]]()
+
+_scroll_target = st.session_state.pop("_scroll_to", None)
+if _scroll_target:
+    # Deep link: land directly on the requested tool.
+    components.html(
+        "<script>(function(){var d=window.parent.document;"
+        f"var el=d.getElementById('{_scroll_target}');"
+        "if(el){el.scrollIntoView({block:'start'});}})();</script>",
+        height=0, scrolling=False)
 
 st.markdown("---")
 st.caption("Six-String Bootcamp · Practice daily, recruit.")
