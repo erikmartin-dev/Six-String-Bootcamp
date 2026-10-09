@@ -1432,7 +1432,7 @@ PHOTOS_DIR = "community/photos"
 
 STICKERS = ["\U0001f918", "\U0001f3b8", "\U0001f525", "\U0001f44f", "\U0001f62e", "\U00002764\ufe0f"]
 AVATAR_EMOJI = ["\U0001f3b8", "\U0001f918", "\U0001f941", "\U0001f3a4", "\U0001f3b9",
-                "\U0001f3ba", "\U0001f3bb", "\U0001f3a7", "\U0001f3b5", "\U0001f525",
+                "\U0001f3ba", "\U0001f3bb", "\U0001f3a7", "🎵", "\U0001f525",
                 "\U000026a1", "\U0001f920", "\U0001f985", "\U0001f43a", "\U0001f335"]
 SKILL_LEVELS = ["Just starting", "Beginner", "Intermediate", "Advanced", "Gigging musician"]
 BOARD_KINDS = ["\U0001f918 Jam", "\U0001f3a4 Gig", "\U0001f4bc Job"]
@@ -1842,7 +1842,7 @@ def _wall_tab():
                     else:
                         st.warning("Couldn't send the sticker \u2014 try again in a bit.")
         replies = p.get("replies", []) or []
-        with st.expander(f"\U0001f4ac Replies ({len(replies)})"):
+        with st.expander(f"💬 Replies ({len(replies)})"):
             for r in sorted(replies, key=lambda x: x.get("ts", 0)):
                 rnm = htmlmod.escape(str(r.get("name", "?"))[:30])
                 rtx = htmlmod.escape(str(r.get("text", ""))[:300]).replace("\n", "<br>")
@@ -2170,7 +2170,7 @@ DEFAULT_FORUMS = [
      "desc": "No dumb questions. Ask anything."},
     {"id": "gear-talk", "icon": "\U0001f3b8", "name": "Gear Talk",
      "desc": "Guitars, amps, pedals, strings."},
-    {"id": "songwriting", "icon": "\U0001f3b5", "name": "Songwriting & Riffs",
+    {"id": "songwriting", "icon": "🎵", "name": "Songwriting & Riffs",
      "desc": "Riffs, lyrics, arrangements."},
     {"id": "show-off", "icon": "\U0001f3aa", "name": "Show Off",
      "desc": "Post your playing. Earn your applause."},
@@ -2286,9 +2286,9 @@ def _forum_list_view(forums):
         n = len(f.get("posts", []))
         c1, c2 = st.columns([5, 1])
         with c1:
-            st.markdown(f"### {f.get('icon', '\U0001f4ac')} {htmlmod.escape(f.get('name', fid))}")
+            st.markdown(f"### {f.get('icon', '💬')} {htmlmod.escape(f.get('name', fid))}")
             st.caption(f.get("desc", ""))
-            st.caption(f"\U0001f4ac {n} post{'s' if n != 1 else ''}")
+            st.caption(f"💬 {n} post{'s' if n != 1 else ''}")
         with c2:
             st.markdown("<div style='height:1.4rem'></div>", unsafe_allow_html=True)
             if st.button("Enter \u2192", key=f"fenter_{fid}"):
@@ -2302,7 +2302,7 @@ def _forum_posts_view(forums, fid):
     if st.button("\u2190 All forums"):
         st.session_state["forum_nav"] = {"forum": None, "post": None}
         st.rerun()
-    st.markdown(f"### {f.get('icon', '\U0001f4ac')} {htmlmod.escape(f.get('name', fid))}")
+    st.markdown(f"### {f.get('icon', '💬')} {htmlmod.escape(f.get('name', fid))}")
     st.caption(f.get("desc", ""))
     can_share = bool(_wall_token())
     with st.expander("\u270f\ufe0f New post", expanded=False):
@@ -2357,7 +2357,7 @@ def _forum_posts_view(forums, fid):
             f"<div><b>{htmlmod.escape(p.get('title', '')[:120])}</b>"
             f"<div style='color:#8a8a9e;font-size:0.8rem;'>"
             f"{htmlmod.escape(p.get('name', '?')[:30])}{flair} \u00b7 {_ago(p.get('ts', 0))} \u00b7 "
-            f"\U0001f4ac {cc}</div></div></div></div>",
+            f"💬 {cc}</div></div></div></div>",
             unsafe_allow_html=True)
         if st.button("Open \u2192", key=f"open_{fid}_{p.get('id')}"):
             st.session_state["forum_nav"] = {"forum": fid, "post": p.get("id")}
@@ -2423,7 +2423,7 @@ def _forum_post_view(forums, fid, pid):
     st.write(p.get("body", "")[:2000])
     if p.get("photo"):
         st.image(p["photo"])
-    st.markdown("### \U0001f4ac Comments")
+    st.markdown("### 💬 Comments")
     cnm = st.text_input("Your name", value=st.session_state.get("wall_name", ""),
                         max_chars=30, key=f"cn_{pid}")
     ctxt = st.text_area("Add a comment", max_chars=1000, key=f"ct_{pid}")
@@ -2453,7 +2453,7 @@ def page_community():
     st.markdown('<div class="hero"><h1>\U0001f918 SIX-STRING SOCIAL</h1>'
                 '<p>Profiles, the wall, gigs, jobs \u0026 jam buddies \u2014 your guitar crew.</p></div>',
                 unsafe_allow_html=True)
-    t1, t2, t3, t4, t5 = st.tabs(["\U0001f4ac Wall", "\U0001f5e8\ufe0f Forum", "\U0001f511 Join", "\U0001f464 Profiles", "\U0001f3b8 Board"])
+    t1, t2, t3, t4, t5 = st.tabs(["💬 Wall", "\U0001f5e8\ufe0f Forum", "\U0001f511 Join", "\U0001f464 Profiles", "\U0001f3b8 Board"])
     with t1:
         _wall_tab()
     with t2:
@@ -2467,21 +2467,25 @@ def page_community():
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
 
+
 def sgt_bubble():
-    """Floating Sgt. Martin AI-tutor bubble. Scripted-brain prototype: the KB
-    lives in JS, matching runs client-side, no server round-trip."""
+    """Floating utility widget: tuner + social mini-feed + Sgt. Martin tutor.
+    Gmail-style persistent panel. Tuner state lives on the parent window so
+    the mic survives Streamlit reruns and can always be stopped."""
     if not st.session_state.get("instructor_on", True):
         return
     html = """<script>
 (function() {
 var d = window.parent.document;
+var P = window.parent;
 if (d.getElementById('sgt-root')) return;
 var PORTRAIT = "https://raw.githubusercontent.com/erikmartin-dev/Six-String-Bootcamp/main/assets/sgt-martin/portrait.webp";
 var TALKING = "https://raw.githubusercontent.com/erikmartin-dev/Six-String-Bootcamp/main/assets/sgt-martin/talking.mp4";
+var WALL_URL = "https://raw.githubusercontent.com/erikmartin-dev/Six-String-Bootcamp/main/community/wall.json";
 
 var KB = [
 {k:['hello','hey','howdy','morning','evening'], a:"Recruit! Sgt. Martin reporting. Ask me about tuning, chords, practice \u2014 anything guitar. What is the mission?"},
-{k:['tune','tuning','tuner'], a:"Standard tuning, low to high: E \u2013 A \u2013 D \u2013 G \u2013 B \u2013 e. Open the Tools tab and run the tuner \u2014 get every string dead center before you play a note."},
+{k:['tune','tuning','tuner'], a:"Standard tuning, low to high: E \u2013 A \u2013 D \u2013 G \u2013 B \u2013 e. This widget has a tuner built in \u2014 hit the Tuner tab and get every string dead center."},
 {k:['string names','strings named','note names','names of the strings'], a:"Low to high: E, A, D, G, B, e. The old-timers say: 'Eddie Ate Dynamite, Good Bye Eddie.' Say it until it is reflex."},
 {k:['e minor','first chord','easy chord','em chord'], a:"Your first chord: E minor. Pointer finger, 5th string 2nd fret. Bird finger, 4th string 2nd fret. Strum all six. That is Lesson 1 \u2014 go earn the badge."},
 {k:['finger names','fingers called','which finger'], a:"Pointer finger, bird finger, ring finger, pinky \u2014 and the thumb rides behind the neck. Say it like you mean it, recruit."},
@@ -2496,7 +2500,7 @@ var KB = [
 {k:['gear','which guitar','starter guitar','buy a guitar'], a:"Erik's pick: the Cort starter pack \u2014 around a hundred bucks with a gig bag and picks, sounds great, plays easy. Check the Gear tab."},
 {k:['course','lessons','curriculum','learn guitar'], a:"Twelve lessons, song-first: you play a real song in Lesson 1, then we backfill tuning, technique, and theory. Pentatonic all the way through. Hit Courses to enlist."},
 {k:['badge'], a:"Badges are proof of progress \u2014 pass the practice, claim the badge, and it auto-posts to Six-String Social for the world to see. Collect all twelve."},
-{k:['forum','social','community'], a:"Six-String Social: the wall, five forums, profiles, and the gig board. Post your badge wins \u2014 the pros are watching and they answer questions."},
+{k:['forum','social','community'], a:"Six-String Social: the wall, five forums, profiles, and the gig board \u2014 and the Social tab of this very widget keeps the wall one tap away."},
 {k:['gig','setlist'], a:"The Gigs tab builds your setlists. The Social board's gig section finds you players and venues. Play out as soon as you can \u2014 nothing teaches like a crowd."},
 {k:['metronome'], a:"The metronome is your drill sergeant's drum. Tools tab \u2014 start slow, lock in, then speed up. If you cannot play it slow, you cannot play it fast."},
 {k:['ear trainer','pitch','singing'], a:"Ear Trainer in the Tools tab: hear the note, sing it back, get scored. Five minutes a day and your ears start doing the work for you."},
@@ -2513,7 +2517,7 @@ var css = "#sgt-bubble{position:fixed;right:18px;bottom:18px;width:64px;height:6
 +"box-shadow:0 4px 18px rgba(233,69,96,.45);animation:sgt-pulse 2.4s infinite;padding:0;}"
 +"#sgt-bubble img{width:100%;height:100%;object-fit:cover;display:block;}"
 +"@keyframes sgt-pulse{0%,100%{box-shadow:0 4px 18px rgba(233,69,96,.45);}50%{box-shadow:0 4px 28px rgba(233,69,96,.85);}}"
-+"#sgt-panel{position:fixed;right:18px;bottom:94px;width:330px;max-width:calc(100vw - 36px);height:460px;"
++"#sgt-panel{position:fixed;right:18px;bottom:94px;width:340px;max-width:calc(100vw - 36px);height:480px;"
 +"max-height:calc(100vh - 130px);background:#141422;border:1px solid #2a2a3e;border-radius:16px;z-index:99999;"
 +"display:none;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.6);font-family:Inter,sans-serif;}"
 +"#sgt-head{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#1a1a2e;border-bottom:1px solid #2a2a3e;}"
@@ -2521,6 +2525,10 @@ var css = "#sgt-bubble{position:fixed;right:18px;bottom:18px;width:64px;height:6
 +"#sgt-head b{color:#fff;font-size:14px;display:block;}"
 +"#sgt-head span{color:#8a8a9e;font-size:11px;display:block;}"
 +"#sgt-x{margin-left:auto;background:none;border:none;color:#8a8a9e;font-size:16px;cursor:pointer;}"
++"#sgt-tabs{display:flex;border-bottom:1px solid #2a2a3e;}"
++"#sgt-tabs button{flex:1;background:none;border:none;color:#8a8a9e;padding:10px 4px;font-size:12.5px;cursor:pointer;border-bottom:2px solid transparent;}"
++"#sgt-tabs button.on{color:#e94560;border-bottom-color:#e94560;font-weight:bold;}"
++".sgt-body{display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden;}"
 +"#sgt-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;}"
 +".sgt-msg{max-width:85%;padding:8px 12px;border-radius:14px;font-size:13.5px;line-height:1.45;color:#eee;}"
 +".sgt-user{align-self:flex-end;background:#e94560;border-bottom-right-radius:4px;}"
@@ -2532,17 +2540,145 @@ var css = "#sgt-bubble{position:fixed;right:18px;bottom:18px;width:64px;height:6
 +"#sgt-chips button{background:#1f1f33;border:1px solid #2a2a3e;color:#e94560;border-radius:20px;padding:5px 10px;font-size:12px;cursor:pointer;}"
 +"#sgt-inputrow{display:flex;gap:8px;padding:10px 12px;border-top:1px solid #2a2a3e;}"
 +"#sgt-in{flex:1;background:#1f1f33;border:1px solid #2a2a3e;border-radius:20px;padding:8px 14px;color:#fff;font-size:13px;outline:none;}"
-+"#sgt-send{background:#e94560;border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:15px;cursor:pointer;}";
++"#sgt-send{background:#e94560;border:none;border-radius:50%;width:36px;height:36px;color:#fff;font-size:15px;cursor:pointer;}"
++"#sgt-social-feed{flex:1;overflow-y:auto;padding:4px 14px;}"
++"#sgt-social-foot{display:flex;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid #2a2a3e;}"
++"#sgt-refresh{background:#1f1f33;border:1px solid #2a2a3e;color:#e94560;border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;}"
++"#sgt-open{margin-left:auto;color:#e94560;font-size:12.5px;text-decoration:none;}";
 var root = d.createElement('div');
 root.id = 'sgt-root';
 root.innerHTML = '<style>' + css + '</style>'
- + '<div id="sgt-bubble" title="Ask Sgt. Martin"><img src="' + PORTRAIT + '"></div>'
+ + '<div id="sgt-bubble" title="Tuner \u00b7 Social \u00b7 Sgt. Martin"><img src="' + PORTRAIT + '"></div>'
  + '<div id="sgt-panel">'
- + '<div id="sgt-head"><img src="' + PORTRAIT + '"><div><b>SGT. MARTIN</b><span>AI tutor &middot; prototype</span></div><button id="sgt-x">\u2715</button></div>'
+ + '<div id="sgt-head"><img src="' + PORTRAIT + '"><div><b>SIX-STRING</b><span>tuner \u00b7 social \u00b7 AI tutor</span></div><button id="sgt-x">\u2715</button></div>'
+ + '<div id="sgt-tabs">'
+ + '<button id="sgt-tab-tuner" class="on">🎵 Tuner</button>'
+ + '<button id="sgt-tab-social">💬 Social</button>'
+ + '<button id="sgt-tab-martin">🤖 Martin</button>'
+ + '</div>'
+ + '<div id="sgt-body-tuner" class="sgt-body" style="display:flex;">'
+ + '<div style="text-align:center;padding:16px 10px;">'
+ + '<div id="wtNote" style="font-size:2.8rem;font-weight:700;color:#e94560;">\u2013</div>'
+ + '<div id="wtCents" style="color:#a0a0a0;margin-bottom:8px;font-size:12px;">press START and play a string</div>'
+ + '<div style="width:90%;height:10px;background:#16213e;border-radius:6px;margin:0 auto;position:relative;overflow:hidden;">'
+ + '<div id="wtNeedle" style="position:absolute;top:0;bottom:0;left:50%;width:4px;background:#e94560;border-radius:2px;"></div></div>'
+ + '<button id="wtBtn" style="margin-top:14px;background:#e94560;color:#fff;border:none;border-radius:10px;padding:10px 26px;font-size:1rem;font-weight:700;cursor:pointer;">START TUNER</button>'
+ + '<div style="color:#5a5a72;font-size:11px;margin-top:8px;">needs microphone access</div>'
+ + '</div></div>'
+ + '<div id="sgt-body-social" class="sgt-body">'
+ + '<div id="sgt-social-feed"></div>'
+ + '<div id="sgt-social-foot"><button id="sgt-refresh">🔄 Refresh</button>'
+ + '<a id="sgt-open" href="?view=social">Open Six-String Social \u2192</a></div>'
+ + '</div>'
+ + '<div id="sgt-body-martin" class="sgt-body">'
  + '<div id="sgt-msgs"></div><div id="sgt-chips"></div>'
  + '<div id="sgt-inputrow"><input id="sgt-in" placeholder="Ask about guitar..." autocomplete="off">'
- + '<button id="sgt-send">\u27a4</button></div></div>';
+ + '<button id="sgt-send">\u27a4</button></div>'
+ + '</div>'
+ + '</div>';
 d.body.appendChild(root);
+/* ---------- tabs ---------- */
+var socialLoaded = false, martinGreeted = false;
+function showTab(which) {
+  ['tuner','social','martin'].forEach(function(t) {
+    d.getElementById('sgt-body-'+t).style.display = (t === which ? 'flex' : 'none');
+    var tab = d.getElementById('sgt-tab-'+t);
+    if (tab) { if (t === which) tab.classList.add('on'); else tab.classList.remove('on'); }
+  });
+  if (which === 'social' && !socialLoaded) { socialLoaded = true; loadSocial(); }
+  if (which === 'martin' && !martinGreeted) {
+    martinGreeted = true;
+    addMsg('bot', "Recruit! Sgt. Martin here \u2014 AI tutor, guitar division. Ask me about tuning, chords, practice, anything. What is the mission?");
+  }
+}
+d.getElementById('sgt-tab-tuner').onclick = function(){ showTab('tuner'); };
+d.getElementById('sgt-tab-social').onclick = function(){ showTab('social'); };
+d.getElementById('sgt-tab-martin').onclick = function(){ showTab('martin'); };
+/* ---------- tuner (state on parent window: survives Streamlit reruns) ---------- */
+var NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+P._sgtT = P._sgtT || {running:false, stream:null, ctx:null};
+var nEl = d.getElementById('wtNote'), cEl = d.getElementById('wtCents'),
+    needle = d.getElementById('wtNeedle'), tBtn = d.getElementById('wtBtn');
+function wAutoCorrelate(buf, sr) {
+  var SIZE = buf.length, rms = 0, i;
+  for (i = 0; i < SIZE; i++) rms += buf[i]*buf[i];
+  if (Math.sqrt(rms/SIZE) < 0.01) return -1;
+  var r1 = 0, r2 = SIZE-1;
+  var b = buf.slice(0);
+  for (i = 0; i < SIZE/2; i++) if (Math.abs(b[i]) < 0.2) { b[i] = 0; r1 = i; }
+  for (i = 1; i < SIZE/2; i++) if (Math.abs(b[SIZE-i]) < 0.2) { b[SIZE-i] = 0; r2 = SIZE-i; }
+  var b2 = b.slice(r1, r2); SIZE = b2.length;
+  var c = new Array(SIZE).fill(0);
+  for (i = 0; i < SIZE; i++) for (var j = 0; j < SIZE-i; j++) c[i] += b2[j]*b2[j+i];
+  var dd = 0; while (dd < SIZE-1 && c[dd] > c[dd+1]) dd++;
+  var maxv = -1, maxp = -1;
+  for (i = dd; i < SIZE; i++) if (c[i] > maxv) { maxv = c[i]; maxp = i; }
+  var T0 = maxp;
+  if (T0 > 0 && T0 < SIZE-1) {
+    var x1 = c[T0-1], x2 = c[T0], x3 = c[T0+1], aa = (x1+x3-2*x2)/2, bb = (x3-x1)/2;
+    if (aa) T0 = T0 - bb/(2*aa);
+  }
+  return sr/T0;
+}
+function wTick() {
+  var T = P._sgtT;
+  if (!T.running || !T.an) return;
+  T.an.getFloatTimeDomainData(T.buf);
+  var f = wAutoCorrelate(T.buf, T.ctx.sampleRate);
+  if (f > 40 && f < 1200) {
+    var n = Math.round(12*Math.log2(f/440))+69;
+    var ref = 440*Math.pow(2,(n-69)/12);
+    var cents = Math.round(1200*Math.log2(f/ref));
+    nEl.textContent = NAMES[n%12];
+    nEl.style.color = Math.abs(cents) < 6 ? '#4ade80' : '#e94560';
+    cEl.textContent = (cents > 0 ? '+' : '') + cents + '\u00a2 '
+      + (Math.abs(cents) < 6 ? '\u2014 in tune' : (cents < 0 ? '\u2014 tune up' : '\u2014 tune down'));
+    needle.style.left = (50 + Math.max(-50, Math.min(50, cents))) + '%';
+  }
+  P.requestAnimationFrame(wTick);
+}
+tBtn.onclick = async function() {
+  var T = P._sgtT;
+  if (T.running) {
+    T.running = false;
+    if (T.stream) T.stream.getTracks().forEach(function(t){ t.stop(); });
+    if (T.ctx) T.ctx.close();
+    T.stream = null; T.ctx = null; T.an = null;
+    tBtn.textContent = 'START TUNER'; tBtn.style.background = '#e94560';
+    cEl.textContent = 'press START and play a string';
+    return;
+  }
+  try {
+    T.stream = await P.navigator.mediaDevices.getUserMedia({audio:true});
+    T.ctx = new (P.window.AudioContext || P.window.webkitAudioContext)();
+    var src = T.ctx.createMediaStreamSource(T.stream);
+    T.an = T.ctx.createAnalyser();
+    T.an.fftSize = 2048; src.connect(T.an);
+    T.buf = new Float32Array(T.an.fftSize);
+    T.running = true;
+    tBtn.textContent = 'STOP'; tBtn.style.background = '#4ade80';
+    P.requestAnimationFrame(wTick);
+  } catch(e) { cEl.textContent = 'microphone blocked \u2014 allow access and retry'; }
+};
+/* ---------- social mini-feed ---------- */
+function esc(s){ return String(s == null ? '' : s).replace(/</g, '&lt;'); }
+function loadSocial() {
+  var box = d.getElementById('sgt-social-feed');
+  box.innerHTML = '<div style="color:#8a8a9e;font-size:12px;padding:12px 0;">loading\u2026</div>';
+  P.fetch(WALL_URL + '?t=' + Date.now()).then(function(r){ return r.json(); }).then(function(data) {
+    var posts = (data.posts || []).slice().sort(function(a,b){ return (b.ts||0)-(a.ts||0); }).slice(0, 5);
+    if (!posts.length) { box.innerHTML = '<div style="color:#8a8a9e;font-size:12px;padding:12px 0;">Quiet in here\u2026</div>'; return; }
+    box.innerHTML = posts.map(function(p) {
+      var when = new Date((p.ts||0)*1000).toLocaleDateString(undefined, {month:'short', day:'numeric'});
+      return '<div style="padding:9px 0;border-bottom:1px solid #2a2a3e;">'
+        + '<div style="font-size:12px;color:#e94560;font-weight:bold;">' + esc((p.name||'?').slice(0,20))
+        + ' <span style="color:#8a8a9e;font-weight:normal;">\u00b7 ' + when + '</span></div>'
+        + '<div style="font-size:12.5px;color:#ddd;margin-top:2px;">' + esc((p.text||'').slice(0,110)) + '</div></div>';
+    }).join('');
+  }).catch(function(){ box.innerHTML = '<div style="color:#8a8a9e;font-size:12px;padding:12px 0;">could not load</div>'; });
+}
+d.getElementById('sgt-refresh').onclick = function(){ loadSocial(); };
+/* ---------- martin chat ---------- */
 var msgs = d.getElementById('sgt-msgs');
 function addMsg(who, text) {
   var div = d.createElement('div');
@@ -2587,15 +2723,12 @@ function send(preset) {
     if (t.parentNode) t.parentNode.removeChild(t);
     setTalking(false);
     addMsg('bot', sgtReply(q));
-  }, 900 + Math.random() * 900);
+  }, 900 + Math.random()*900);
 }
 d.getElementById('sgt-bubble').onclick = function() {
   var p = d.getElementById('sgt-panel');
   var open = p.style.display === 'none' || !p.style.display;
   p.style.display = open ? 'flex' : 'none';
-  if (open && !msgs.children.length) {
-    addMsg('bot', "Recruit! Sgt. Martin here \u2014 AI tutor, guitar division. Ask me about tuning, chords, practice, anything. What is the mission?");
-  }
 };
 d.getElementById('sgt-x').onclick = function() { d.getElementById('sgt-panel').style.display = 'none'; };
 d.getElementById('sgt-send').onclick = function() { send(); };
@@ -2603,13 +2736,12 @@ d.getElementById('sgt-in').addEventListener('keydown', function(e) { if (e.key =
 [["Tune my guitar","how do i tune my guitar"],["Teach me Em","teach me e minor"],["Practice tips","practice tips"]].forEach(function(c) {
   var b = d.createElement('button');
   b.textContent = c[0];
-  b.onclick = function() { send(c[1]); };
+  b.onclick = function() { showTab('martin'); send(c[1]); };
   d.getElementById('sgt-chips').appendChild(b);
 });
 })();
 </script>""";
     components.html(html, height=0, scrolling=False)
-
 # Standalone Six-String Social mode. social.py sets SIXSTRING_SOCIAL=1 and then
 # imports this module: same community data, its own front door, no bootcamp chrome.
 # ----------------------------------------------------------------------------
