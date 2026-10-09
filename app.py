@@ -579,7 +579,7 @@ def sgt_intro():
                 '<h1 style="font-size:1.35rem;margin:0;">\U0001F3B8 SIX-STRING BOOTCAMP</h1>'
                 '<p style="margin:2px 0 0;font-size:0.85rem;">Your instructor is about to report for duty.</p></div>',
                 unsafe_allow_html=True)
-    if st.button("\U0001F534 REPORT FOR TRAINING, SERGEANT!", type="primary",
+    if st.button("Start", type="primary",
                  use_container_width=True):
         st.session_state["enlisted"] = True
         st.rerun()
