@@ -1,28 +1,20 @@
 {
   "posts": [
     {
-      "id": "welcome001",
-      "name": "Erik",
-      "text": "Welcome to the wall, recruits! 🎸 This is where we show our work — post your wins, your practice streaks, your battle scars. Pass a lesson and your badge shows up right here next to your name. Now grab that guitar.",
-      "badges": [],
-      "ts": 1791548832.229708,
-      "likes": 1
-    },
-    {
-      "id": "8b5a9f46f691",
-      "name": "Erik",
-      "text": "Nailed this app",
-      "badges": [],
-      "ts": 1791549661.5390399,
-      "likes": 0
-    },
-    {
       "id": "ab808e3e5658",
       "name": "Erik",
       "text": "Nailed this app",
       "badges": [],
       "ts": 1791549681.1472645,
       "likes": 0
+    },
+    {
+      "id": "welcome001",
+      "name": "Erik",
+      "text": "Welcome to the wall, recruits! 🎸 This is where we show our work — post your wins, your practice streaks, your battle scars. Pass a lesson and your badge shows up right here next to your name. Now grab that guitar.",
+      "badges": [],
+      "ts": 1791548832.229708,
+      "likes": 1
     }
   ]
 }
