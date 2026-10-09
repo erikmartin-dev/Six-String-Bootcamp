@@ -2182,6 +2182,15 @@ def page_community():
     with t4:
         _board_tab()
 # ----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+# Standalone Six-String Social mode. social.py sets SIXSTRING_SOCIAL=1 and then
+# imports this module: same community data, its own front door, no bootcamp chrome.
+# ----------------------------------------------------------------------------
+if os.environ.get("SIXSTRING_SOCIAL") == "1":
+    page_community()
+    st.stop()
+
+
 # Router — top button nav, no sidebar
 # ----------------------------------------------------------------------------
 NAV = [
