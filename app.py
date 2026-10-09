@@ -573,18 +573,23 @@ def sgt_card(message, voice_text=None):
 def sgt_intro():
     if st.session_state.get("enlisted"):
         return True
-    st.markdown('<div class="hero"><h1>🎸 SIX-STRING BOOTCAMP</h1>'
-                '<p>Your instructor is about to report for duty.</p></div>',
+    # Compact entrance: the call-to-action must be visible on one phone
+    # screen with zero scrolling. Video is flavor below the button, not a gate.
+    st.markdown('<div class="hero" style="padding:10px 8px;margin-bottom:2px;">'
+                '<h1 style="font-size:1.35rem;margin:0;">\U0001F3B8 SIX-STRING BOOTCAMP</h1>'
+                '<p style="margin:2px 0 0;font-size:0.85rem;">Your instructor is about to report for duty.</p></div>',
                 unsafe_allow_html=True)
+    if st.button("\U0001F534 REPORT FOR TRAINING, SERGEANT!", type="primary",
+                 use_container_width=True):
+        st.session_state["enlisted"] = True
+        st.rerun()
     if os.path.exists(SGT["solo"]):
-        st.video(SGT["solo"])
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c2:
+            st.video(SGT["solo"])
     st.caption("Sgt. Martin warming up. Sound on, recruit.")
     if os.path.exists(SGT["welcome_speech"]):
         st.audio(SGT["welcome_speech"])
-    st.markdown("")
-    if st.button("REPORT FOR TRAINING, SERGEANT!", type="primary"):
-        st.session_state["enlisted"] = True
-        st.rerun()
     return False
 
 # ----------------------------------------------------------------------------
