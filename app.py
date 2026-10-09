@@ -1436,7 +1436,19 @@ def _wall_token():
 
 
 def wall_load():
-    """Returns (posts, shared). Shared wall from GitHub; falls back to local file."""
+    """Returns (posts, readable). Fresh API read with a token (no CDN cache);
+    public raw read otherwise; local file as a last resort."""
+    tok = _wall_token()
+    if tok and requests is not None:
+        try:
+            h = {**WALL_HEADERS, "Authorization": "Bearer " + tok}
+            cur = requests.get(WALL_API, headers=h, timeout=10).json()
+            if cur.get("content"):
+                data = json.loads(base64.b64decode(cur["content"]).decode("utf-8", "replace"))
+                if isinstance(data, dict) and isinstance(data.get("posts"), list):
+                    return data["posts"], True
+        except Exception:
+            pass
     if requests is not None:
         try:
             r = requests.get(WALL_RAW, timeout=8)
@@ -1541,7 +1553,8 @@ def page_community():
     st.markdown('<div class="hero"><h1>💬 COMMUNITY WALL</h1>'
                 '<p>Post your progress. Cheer on your fellow recruits.</p></div>',
                 unsafe_allow_html=True)
-    posts, shared = wall_load()
+    posts, _readable = wall_load()
+    can_share = bool(_wall_token())
     liked = st.session_state.setdefault("wall_liked", [])
 
     st.markdown("### Shout it out")
@@ -1565,19 +1578,27 @@ def page_community():
                     "text": text.strip()[:500], "badges": my_badges,
                     "ts": time.time(), "likes": 0}
             if wall_publish(post):
-                st.success("You're on the wall! \U0001f3b8" if shared else
-                           "Posted \u2014 it stays on this device until the shared wall is connected.")
+                if can_share:
+                    st.session_state.setdefault("wall_just_posted", []).append(post)
+                    st.success("You're on the wall! \U0001f3b8")
+                else:
+                    st.success("Posted \u2014 it stays on this device until the shared wall is connected.")
                 st.rerun()
             else:
                 st.error("Couldn't reach the wall \u2014 check your connection and try again.")
 
-    if not shared:
+    if not can_share:
         st.info("\U0001f4e1 You're reading the public wall. Your posts stay on this device until "
                 "the shared wall is connected (one-time setup, two minutes).")
 
     st.markdown("### The wall")
-    mine = [] if shared else load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
-    feed = sorted(mine + posts, key=lambda p: p.get("ts", 0), reverse=True)
+    mine = load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
+    just = st.session_state.get("wall_just_posted", [])
+    seen = {p.get("id") for p in posts} | {p.get("id") for p in mine}
+    extra = [p for p in just if p.get("id") not in seen]
+    if len(extra) != len(just):
+        st.session_state["wall_just_posted"] = extra
+    feed = sorted(mine + extra + posts, key=lambda p: p.get("ts", 0), reverse=True)
     if not feed:
         st.caption("The wall is quiet\u2026 be the first to post. \U0001f3b8")
     for p in feed:
