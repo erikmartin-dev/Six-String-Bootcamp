@@ -1136,7 +1136,7 @@ def page_home():
         ("🧰", "Tools", "Metronome, tuner, and ear trainer — free forever."),
         ("🎸", "Gear", "The starter guitar Erik recommends, and what's next."),
         ("🏆", "Collection", "Your badges and NFTs. Proof of progress."),
-        ("💬", "Community", "The wall — post progress, cheer on recruits."),
+        ("💬", "Social", "Six-String Social — profiles, the wall, gigs & jobs."),
     ]
     cols = st.columns(2)
     for i, (icon, name, desc) in enumerate(grid):
@@ -1684,7 +1684,7 @@ def _ago(ts):
 
 
 
-def _profile_card(name, prof, posts):
+def _profile_card(name, prof, posts, members):
     c1, c2 = st.columns([1, 4])
     with c1:
         if prof.get("photo"):
@@ -1710,6 +1710,19 @@ def _profile_card(name, prof, posts):
         badges = _badges_for(name, posts)
         if badges:
             st.caption(" ".join(f"\U0001f3c5 L{b}" for b in badges))
+        fc = follower_count(name, members)
+        if fc:
+            st.caption(f"\U0001f465 {fc} follower{'s' if fc != 1 else ''}")
+        me = st.session_state.get("member")
+        if me and name.lower() != me["name"].lower():
+            fl = [x.lower() for x in members.get(_email_hash(me["email"]), {}).get("following", [])]
+            is_f = name.lower() in fl
+            if st.button("\u2796 Unfollow" if is_f else "\u2795 Follow", key=f"fol_{name}"):
+                res = member_follow(name)
+                if res in ("followed", "unfollowed"):
+                    st.rerun()
+                else:
+                    st.warning("Couldn't update \u2014 try again in a bit.")
 
 
 def _wall_tab():
@@ -1768,7 +1781,7 @@ def _wall_tab():
                 "the shared wall is connected (one-time setup, two minutes).")
 
     st.markdown("### The wall")
-    show = st.radio("Show", ["All posts", "\U0001f3c5 Badge posts"], horizontal=True)
+    show = st.radio("Show", ["All posts", "\U0001f3c5 Badge posts", "\U0001f465 Following"], horizontal=True)
     mine = load_json(WALL_LOCAL, {"posts": []}).get("posts", [])
     just = st.session_state.get("wall_just_posted", [])
     seen = {p.get("id") for p in posts} | {p.get("id") for p in mine}
@@ -1776,8 +1789,18 @@ def _wall_tab():
     if len(extra) != len(just):
         st.session_state["wall_just_posted"] = extra
     feed = sorted(mine + extra + posts, key=lambda p: p.get("ts", 0), reverse=True)
-    if show != "All posts":
+    if show == "\U0001f3c5 Badge posts":
         feed = [p for p in feed if p.get("badges")]
+    elif show == "\U0001f465 Following":
+        me = st.session_state.get("member")
+        if not me:
+            st.info("Log in on the \U0001f511 Join tab to follow other pickers.")
+            feed = []
+        else:
+            members = repo_load_json(MEMBERS_PATH, {"members": {}}).get("members", {})
+            following = {x.lower() for x in
+                         members.get(_email_hash(me["email"]), {}).get("following", [])}
+            feed = [p for p in feed if p.get("name", "").lower() in following]
     if not feed:
         st.caption("The wall is quiet\u2026 be the first to post. \U0001f3b8")
     for p in feed:
@@ -1854,7 +1877,8 @@ def _profiles_tab():
     st.caption("18+ only \u2014 pick a name, an avatar, and tell the crew who you are.")
     can_share = bool(_wall_token())
     with st.form("profile_form"):
-        nm = st.text_input("Display name (use the same name you post with)", max_chars=30)
+        nm = st.text_input("Display name (use the same name you post with)", max_chars=30,
+                            value=st.session_state.get("member", {}).get("name", ""))
         c1, c2 = st.columns(2)
         with c1:
             av = st.selectbox("Avatar", AVATAR_EMOJI)
@@ -1905,8 +1929,9 @@ def _profiles_tab():
     profiles = _profiles()
     if not profiles:
         st.info("No profiles yet \u2014 be the first. \U0001f918")
+    members = repo_load_json(MEMBERS_PATH, {"members": {}}).get("members", {})
     for name, prof in sorted(profiles.items()):
-        _profile_card(name, prof, posts)
+        _profile_card(name, prof, posts, members)
         st.divider()
 
 
@@ -1965,6 +1990,166 @@ def _board_tab():
             unsafe_allow_html=True)
 
 
+
+MEMBERS_PATH = "community/members.json"
+
+
+def _member_key():
+    try:
+        from cryptography.fernet import Fernet  # noqa: F401
+    except Exception:
+        return None
+    return (_secret("member_key") or "").strip()
+
+
+def _email_hash(email):
+    import hashlib
+    return hashlib.sha256(email.strip().lower().encode()).hexdigest()
+
+
+def _email_valid(email):
+    import re as _re
+    return bool(_re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", (email or "").strip()))
+
+
+def _username_valid(username):
+    import re as _re
+    return bool(_re.match(r"^[a-zA-Z0-9_]{3,20}$", (username or "").strip()))
+
+
+def _username_taken(username):
+    un = username.strip().lower()
+    data = repo_load_json(MEMBERS_PATH, {"members": {}})
+    return any(m.get("name", "").lower() == un for m in data.get("members", {}).values())
+
+
+def member_signup(email, username, push_consent):
+    """Register a member. Returns ok|exists|taken|nokey|badkey|savefail."""
+    key = _member_key()
+    if not key:
+        return "nokey"
+    try:
+        from cryptography.fernet import Fernet
+        f = Fernet(key.encode())
+    except Exception:
+        return "badkey"
+    email = email.strip().lower()
+    eh = _email_hash(email)
+    data = repo_load_json(MEMBERS_PATH, {"members": {}})
+    members = data.setdefault("members", {})
+    if eh in members:
+        return "exists"
+    if _username_taken(username):
+        return "taken"
+    members[eh] = {"email_enc": f.encrypt(email.encode()).decode(),
+                   "name": username.strip()[:30],
+                   "plan": "free",
+                   "following": [],
+                   "push": bool(push_consent),
+                   "push_ts": time.time() if push_consent else 0,
+                   "ts": time.time()}
+    return "ok" if repo_save_json(MEMBERS_PATH, data, f"New member: {username.strip()[:30]}") else "savefail"
+
+
+def member_follow(target):
+    """Toggle follow on another member. Returns followed|unfollowed|nologin|nouser|self|savefail."""
+    me = st.session_state.get("member")
+    if not me:
+        return "nologin"
+    data = repo_load_json(MEMBERS_PATH, {"members": {}})
+    members = data.get("members", {})
+    mine = members.get(_email_hash(me["email"]))
+    if not mine:
+        return "nouser"
+    t = target.strip()
+    if t.lower() == me["name"].lower():
+        return "self"
+    fl = mine.setdefault("following", [])
+    low = [x.lower() for x in fl]
+    if t.lower() in low:
+        mine["following"] = [x for x in fl if x.lower() != t.lower()]
+        action = "unfollowed"
+    else:
+        fl.append(t[:30])
+        action = "followed"
+    return action if repo_save_json(MEMBERS_PATH, data, f"{me['name']} {action} {t[:30]}") else "savefail"
+
+
+def follower_count(username, members):
+    un = username.strip().lower()
+    return sum(1 for m in members.values()
+               if un in [x.lower() for x in m.get("following", [])])
+
+
+def member_lookup(email):
+    data = repo_load_json(MEMBERS_PATH, {"members": {}})
+    return data.get("members", {}).get(_email_hash(email))
+
+
+def _login_as(rec, email):
+    st.session_state["member"] = {"name": rec.get("name"),
+                                  "email": email.strip().lower(),
+                                  "push": bool(rec.get("push"))}
+    st.session_state["wall_name"] = rec.get("name")
+
+
+def _join_tab():
+    st.markdown("#### Become a member")
+    st.caption("One email and you're in \u2014 a persistent identity across the wall, profiles, and board.")
+    if not _member_key():
+        st.info("\U0001f511 Membership signup is being connected \u2014 check back soon.")
+        return
+    if st.session_state.get("member"):
+        m = st.session_state["member"]
+        st.success(f"You're in as **{htmlmod.escape(m['name'])}** \u2705")
+        st.caption("\U0001f514 Push notifications: " +
+                   ("ON \u2014 we'll switch them on with the app backend." if m.get("push")
+                    else "OFF \u2014 change your mind anytime by rejoining."))
+        if st.button("Log out"):
+            st.session_state.pop("member", None)
+            st.rerun()
+        return
+    with st.form("join_form"):
+        email = st.text_input("Email", placeholder="you@example.com", max_chars=80)
+        name = st.text_input("Username", max_chars=20,
+                             placeholder="pick_a_name")
+        st.caption("3\u201320 characters, letters/numbers/underscores \u2014 this is your identity everywhere on the site.")
+        push = st.checkbox("Yes \u2014 send me push notifications (replies, gigs, new lessons)", value=True)
+        age_ok = st.checkbox("I confirm I'm 18 or older")
+        go = st.form_submit_button("Join the crew \U0001f918", use_container_width=True)
+    if go:
+        if not _email_valid(email):
+            st.warning("That email doesn't look right.")
+        elif not _username_valid(name):
+            st.warning("Username needs 3\u201320 characters: letters, numbers, underscores.")
+        elif not age_ok:
+            st.warning("This community is 18+ \u2014 please confirm your age.")
+        else:
+            res = member_signup(email, name, push)
+            if res == "taken":
+                st.warning("That username's taken \u2014 try another.")
+            elif res in ("ok", "exists"):
+                rec = member_lookup(email) or {"name": name.strip()[:30], "push": push}
+                _login_as(rec, email)
+                st.success("Welcome to the crew! \U0001f918 You're logged in." if res == "ok"
+                           else f"Welcome back, **{htmlmod.escape(rec.get('name', ''))}**! You're logged in.")
+                st.rerun()
+            elif res == "nokey":
+                st.error("Membership isn't connected yet \u2014 try again shortly.")
+            else:
+                st.error("Couldn't save \u2014 try again in a bit.")
+    with st.expander("Already a member? Log in"):
+        lemail = st.text_input("Your email", key="login_email", max_chars=80)
+        if st.button("Log in", key="login_go"):
+            rec = member_lookup(lemail)
+            if rec:
+                _login_as(rec, lemail)
+                st.success(f"Welcome back, **{htmlmod.escape(rec.get('name', ''))}**!")
+                st.rerun()
+            else:
+                st.warning("No member found with that email \u2014 join above. \U0001f446")
+    st.caption("\U0001f514 Push notifications aren't live yet \u2014 your consent is saved now and honored when the app backend launches.")
+
 def _announce_badge(lesson, title):
     """Auto-post a badge announcement to the community wall."""
     if not st.session_state.get("announce_badges", True):
@@ -1984,15 +2169,17 @@ def _announce_badge(lesson, title):
         st.warning("Badge claimed, but the wall announcement didn't go through.")
 
 def page_community():
-    st.markdown('<div class="hero"><h1>\U0001f4ac COMMUNITY</h1>'
+    st.markdown('<div class="hero"><h1>\U0001f918 SIX-STRING SOCIAL</h1>'
                 '<p>Profiles, the wall, gigs, jobs \u0026 jam buddies \u2014 your guitar crew.</p></div>',
                 unsafe_allow_html=True)
-    t1, t2, t3 = st.tabs(["\U0001f4ac Wall", "\U0001f464 Profiles", "\U0001f3b8 Board"])
+    t1, t2, t3, t4 = st.tabs(["\U0001f4ac Wall", "\U0001f511 Join", "\U0001f464 Profiles", "\U0001f3b8 Board"])
     with t1:
         _wall_tab()
     with t2:
-        _profiles_tab()
+        _join_tab()
     with t3:
+        _profiles_tab()
+    with t4:
         _board_tab()
 # ----------------------------------------------------------------------------
 # Router — top button nav, no sidebar
@@ -2001,14 +2188,14 @@ NAV = [
     ("🏠", "Home"), ("🎵", "Songs"), ("🔍", "Find Songs"), ("💾", "Saved"),
     ("🎤", "Gigs"), ("📚", "Learn"), ("🎓", "Courses"), ("💳", "Membership"),
     ("🧰", "Tools"), ("🎸", "Gear"), ("🏆", "Collection"),
-    ("💬", "Community"),
+    ("💬", "Social"),
 ]
 PAGES = {
     "Home": page_home, "Songs": page_songs, "Find Songs": find_songs_page,
     "Saved": page_saved, "Gigs": page_gigs, "Learn": page_learn,
     "Courses": page_courses, "Membership": page_membership, "Tools": page_tools,
     "Gear": page_gear, "Collection": page_collection,
-    "Community": page_community,
+    "Social": page_community,
 }
 
 if not sgt_intro():
@@ -2023,7 +2210,7 @@ def _goto(page):
 # Deep links for one-tap home-screen shortcuts: ?view=tuner|metronome|ear
 _DEEP_LINKS = {"tuner": ("Tools", "tool-tuner"), "metronome": ("Tools", "tool-metronome"),
                "ear": ("Tools", "tool-ear"), "tools": ("Tools", None),
-               "community": ("Community", None)}
+               "community": ("Social", None), "social": ("Social", None)}
 if "page" not in st.session_state:
     st.session_state["page"] = "Home"
     try:
@@ -2055,7 +2242,7 @@ if st.session_state.pop("_jump", False):
         "if(el&&el.scrollTo){el.scrollTo(0,0);}else{window.parent.scrollTo(0,0);}})();</script>",
         height=0, scrolling=False)
 
-PAGES[st.session_state["page"]]()
+PAGES.get(st.session_state["page"], page_home)()
 
 _scroll_target = st.session_state.pop("_scroll_to", None)
 if _scroll_target:
