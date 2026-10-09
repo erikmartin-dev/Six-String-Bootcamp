@@ -24,6 +24,7 @@ jobs:
       - run: npm ci
       - run: npx cap add android
       - run: node scripts/patch-manifest.js
+      - run: node scripts/add-widget.js
       - run: npx cap sync android
       - run: chmod +x android/gradlew
       - run: cd android && ./gradlew assembleDebug
@@ -60,6 +61,8 @@ jobs:
       - run: npx cap add android
         if: steps.signing.outputs.present == 'true'
       - run: node scripts/patch-manifest.js
+        if: steps.signing.outputs.present == 'true'
+      - run: node scripts/add-widget.js
         if: steps.signing.outputs.present == 'true'
       - run: npx cap sync android
         if: steps.signing.outputs.present == 'true'
