@@ -669,12 +669,13 @@ def _tuner_js(p, S, DOC, WIN, RAF, NAV, declare):
     js = r'''
 DECLARE
 (function(){
+try{
 var NAMES=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 var STR=[["E",82.41],["A",110.00],["D",146.83],["G",196.00],["B",246.94],["e",329.63]];
-var nEl=DOC.getElementById('__P__Note'),sEl=DOC.getElementById('__P__Status'),
-    cEl=DOC.getElementById('__P__Cents'),ndl=DOC.getElementById('__P__Needle'),
-    btn=DOC.getElementById('__P__Btn'),auto=DOC.getElementById('__P__Auto');
-var rows=DOC.querySelectorAll('.__P__-srow');
+var nEl=__DOC__.getElementById('__P__Note'),sEl=__DOC__.getElementById('__P__Status'),
+    cEl=__DOC__.getElementById('__P__Cents'),ndl=__DOC__.getElementById('__P__Needle'),
+    btn=__DOC__.getElementById('__P__Btn'),auto=__DOC__.getElementById('__P__Auto');
+var rows=__DOC__.querySelectorAll('.__P__-srow');
 function acor(buf,sr){
   var SIZE=buf.length,rms=0,i;
   for(i=0;i<SIZE;i++)rms+=buf[i]*buf[i];
@@ -702,7 +703,7 @@ function paintRow(){
 }
 function playRef(i){
   try{
-    var AC=WIN.AudioContext||WIN.webkitAudioContext;
+    var AC=__WIN__.AudioContext||__WIN__.webkitAudioContext;
     __S__.refCtx=__S__.refCtx||new AC();
     var ctx=__S__.refCtx;
     if(ctx.resume)ctx.resume();
@@ -754,7 +755,7 @@ function tick(){
     nEl.textContent='\u2013';sEl.textContent='';
     cEl.textContent='listening\u2026 play the '+STR[__S__.sel][0]+' string';
   }
-  RAF(tick);
+  __RAF__(tick);
 }
 btn.onclick=async function(){
   if(__S__.running){
@@ -769,21 +770,22 @@ btn.onclick=async function(){
     return;
   }
   try{
-    __S__.stream=await NAV.mediaDevices.getUserMedia({audio:true});
-    __S__.ctx=new (WIN.AudioContext||WIN.webkitAudioContext)();
+    __S__.stream=await __NAV__.mediaDevices.getUserMedia({audio:true});
+    __S__.ctx=new (__WIN__.AudioContext||__WIN__.webkitAudioContext)();
     var src=__S__.ctx.createMediaStreamSource(__S__.stream);
     __S__.an=__S__.ctx.createAnalyser();
     __S__.an.fftSize=2048;src.connect(__S__.an);
     __S__.buf=new Float32Array(__S__.an.fftSize);
     __S__.running=true;__S__.okSince=0;
     btn.textContent='STOP';btn.style.background='#4ade80';
-    RAF(tick);
+    __RAF__(tick);
   }catch(e){cEl.textContent='microphone blocked \u2014 allow access and retry';}
 };
 rows.forEach(function(r){
   r.onclick=function(){sel(parseInt(r.getAttribute('data-i'),10));};
 });
 sel(0,true);
+}catch(e){}
 })();
 '''
     return (js.replace("DECLARE", declare)
@@ -801,6 +803,7 @@ TUNER_HTML = (
                 "buf:null,okSince:0,refCtx:null};")
     + "</script>"
 )
+
 
 
 EAR_TRAINER_HTML = """
