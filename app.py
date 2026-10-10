@@ -26,7 +26,7 @@ except ImportError:
 
 st.set_page_config(
     page_title="Six-String Bootcamp",
-    page_icon="🎸",
+    page_icon="assets/app-icon.png",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
