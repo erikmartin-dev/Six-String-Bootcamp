@@ -742,6 +742,7 @@ function tick(){
       if(r)r.style.borderColor='#e94560';
     }
   }else{
+    __S__.okSince=0;
     nEl.textContent='\u2013';sEl.textContent='';
     cEl.textContent='listening\u2026 play the '+STR[__S__.sel][0]+' string';
   }
@@ -804,17 +805,20 @@ EAR_TRAINER_HTML = """
   <div id="eVerdict" style="font-size:1.35rem;font-weight:700;min-height:1.9em;"></div>
   <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:4px;">
     <button id="ePlay" style="background:#e94560;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#9654; PLAY NOTE</button>
+    <button id="eRetry" style="background:#16213e;color:#f0f0f5;border:1px solid rgba(233,69,96,.4);border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#128260; TRY AGAIN</button>
     <button id="eNew" style="background:#16213e;color:#f0f0f5;border:1px solid rgba(233,69,96,.4);border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#127922; NEW NOTE</button>
     <button id="eMic" style="background:#16213e;color:#f0f0f5;border:1px solid rgba(233,69,96,.4);border-radius:10px;padding:10px 18px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#127908; MIC: OFF</button>
   </div>
+  <div id="eAtt" style="color:#5a5a72;font-size:0.85rem;margin-top:8px;">attempt 1</div>
   <div id="eStats" style="color:#5a5a72;font-size:0.85rem;margin-top:8px;">rounds: 0 &middot; nailed: 0</div>
   <div style="color:#5a5a72;font-size:0.78rem;margin-top:4px;">needs microphone access &middot; works on localhost / HTTPS</div>
 </div>
 <script>
 const ENOTES=[["A3",220.00],["C4",261.63],["D4",293.66],["E4",329.63],["G4",392.00],["A4",440.00]];
-let eTarget=null, eMicOn=false, eRounds=0, eNailed=0, eScored=false, eStream=null, eCtx=null;
+let eTarget=null, eMicOn=false, eRounds=0, eNailed=0, eScored=false, eStream=null, eCtx=null, eAttempt=1;
 const eT=document.getElementById('eTarget'), eH=document.getElementById('eHeard'),
-      eV=document.getElementById('eVerdict'), eS=document.getElementById('eStats');
+      eV=document.getElementById('eVerdict'), eS=document.getElementById('eStats'),
+      eA=document.getElementById('eAtt');
 function eAutoCorrelate(buf,sr){
   let SIZE=buf.length, rms=0, i;
   for(i=0;i<SIZE;i++) rms+=buf[i]*buf[i];
@@ -839,12 +843,13 @@ function eAutoCorrelate(buf,sr){
 function ePick(){
   eTarget=ENOTES[Math.floor(Math.random()*ENOTES.length)];
   eScored=false;
+  eAttempt=1; eA.textContent='attempt 1';
   eT.textContent=eTarget[0];
   eV.textContent=''; eV.style.color='';
   eH.textContent='sing it back\u2026';
 }
 document.getElementById('eNew').addEventListener('click', ePick);
-document.getElementById('ePlay').addEventListener('click', ()=>{
+function ePlayNote(){
   if(!eTarget) ePick();
   try{
     const AC=window.AudioContext||window.webkitAudioContext;
@@ -858,6 +863,14 @@ document.getElementById('ePlay').addEventListener('click', ()=>{
     o.start(tm); o.stop(tm+1.5);
     eH.textContent='listen\u2026 now sing it back';
   }catch(err){ eH.textContent='audio blocked by browser'; }
+}
+document.getElementById('ePlay').addEventListener('click', ePlayNote);
+document.getElementById('eRetry').addEventListener('click', ()=>{
+  eAttempt++;
+  eA.textContent='attempt '+eAttempt;
+  eV.textContent=''; eV.style.color='';
+  eScored=false;
+  ePlayNote();
 });
 document.getElementById('eMic').addEventListener('click', async (ev)=>{
   const btn=ev.currentTarget;
@@ -881,7 +894,7 @@ document.getElementById('eMic').addEventListener('click', async (ev)=>{
         eH.textContent='you: '+Math.round(f)+' Hz \u00b7 '+(cents>0?'+':'')+cents+'\u00a2 '+dir;
         const a=Math.abs(cents);
         if(a<=20){
-          eV.textContent='\\uD83C\\uDF96\\uFE0F NAILED IT!'; eV.style.color='#4ade80';
+          eV.textContent='\\uD83C\\uDF96\\uFE0F NAILED IT! (attempt '+eAttempt+')'; eV.style.color='#4ade80';
           if(!eScored){ eScored=true; eRounds++; eNailed++; eS.textContent='rounds: '+eRounds+' \u00b7 nailed: '+eNailed; }
         } else if(a<=50){
           eV.textContent='close \u2014 a touch '+(cents>0?'lower':'higher'); eV.style.color='#fbbf24';
@@ -1085,7 +1098,7 @@ def practice_dialogue(lesson_no):
 
 
 def ear_trainer():
-    components.html(EAR_TRAINER_HTML, height=450, scrolling=False)
+    components.html(EAR_TRAINER_HTML, height=520, scrolling=False)
 
 
 def fretboard_lab():
