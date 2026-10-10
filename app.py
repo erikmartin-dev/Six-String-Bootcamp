@@ -2867,7 +2867,10 @@ if st.session_state.pop("_jump", False):
     # scroll offset can be restored after the rerun, undoing a single early
     # scroll. The page name is embedded so the iframe remounts and the script
     # re-runs on every navigation.
+    # TEMP-DIAG: visible marker proves the component rendered on this nav.
     _nav_token = str(st.session_state.get("page", "home")).replace("*/", "")
+    st.markdown(f'<div style="height:3px;background:#e94560;" title="navjump:{_nav_token}"></div>',
+                unsafe_allow_html=True)
     components.html(
         "<script>(function(){/*nav:" + _nav_token + "*/"
         "var d=window.parent.document;"
@@ -2898,4 +2901,4 @@ if _scroll_target:
         height=0, scrolling=False)
 
 st.markdown("---")
-st.caption("Six-String Bootcamp · Practice daily, recruit.")
+st.caption("Six-String Bootcamp · Practice daily, recruit. · build diag3")
