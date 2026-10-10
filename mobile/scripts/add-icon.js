@@ -20,6 +20,9 @@ const densities = ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi'];
 for (const d of densities) {
   copy(`${ICON}/mipmap-${d}/ic_launcher.png`,
        `${ANDROID}/res/mipmap-${d}/ic_launcher.png`);
+  // Round-icon fallback (pre-API-26): same mark, launcher circle-crops it
+  copy(`${ICON}/mipmap-${d}/ic_launcher.png`,
+       `${ANDROID}/res/mipmap-${d}/ic_launcher_round.png`);
 }
 
 // 2. Adaptive-icon foregrounds (white background + mark)
