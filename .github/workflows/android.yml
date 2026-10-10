@@ -28,6 +28,9 @@ jobs:
       - run: node scripts/add-icon.js
       - run: npx cap sync android
       - run: chmod +x android/gradlew
+      # Persistent debug key: every CI build signs with the same key, so the
+      # APK installs as an update instead of failing on signature mismatch.
+      - run: mkdir -p ~/.android && cp debug.keystore ~/.android/debug.keystore
       - run: cd android && ./gradlew assembleDebug
       - uses: actions/upload-artifact@v4
         with:
