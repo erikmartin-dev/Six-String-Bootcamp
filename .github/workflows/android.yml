@@ -64,6 +64,7 @@ jobs:
       - run: node scripts/patch-manifest.js
         if: steps.signing.outputs.present == 'true'
       - run: node scripts/add-widget.js
+        if: steps.signing.outputs.present == 'true'
       - run: node scripts/add-icon.js
         if: steps.signing.outputs.present == 'true'
       - run: npx cap sync android
