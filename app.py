@@ -62,7 +62,19 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 .hero h1 { color: #e94560; font-size: 2.6rem; font-weight: 700; margin: 0;
     letter-spacing: -1px; text-shadow: 0 0 30px rgba(233, 69, 96, 0.3); }
 .hero p { color: #a0a0a0; font-size: 1.05rem; margin-top: 0.4rem; font-weight: 300; }
-.navbtn button { font-size: 0.85rem !important; padding: 0.55rem 0.2rem !important; }
+/* Compact sticky section nav: one short pill row, pinned to the top on phones
+   so sections are always one tap away and content starts on the same screen. */
+div[data-testid="stPills"] {
+    position: sticky; top: 0; z-index: 999;
+    background: #0e1117; padding: 6px 0; margin: 0 -1rem;
+}
+div[data-testid="stPills"] button { white-space: nowrap; }
+/* Phones: shrink section banners so the header + first content share one screen. */
+@media (max-width: 768px) {
+    .hero { padding: 0.9rem 0.5rem; margin-bottom: 0.8rem; border-radius: 14px; }
+    .hero h1 { font-size: 1.55rem; }
+    .hero p { font-size: 0.9rem; margin-top: 0.25rem; }
+}
 .tool-card {
     background: linear-gradient(145deg, #16213e, #0f3460);
     border-radius: 16px; padding: 1.25rem;
@@ -2845,18 +2857,31 @@ if "page" not in st.session_state:
     if _view in _DEEP_LINKS:
         st.session_state["page"], st.session_state["_scroll_to"] = _DEEP_LINKS[_view]
 
-st.markdown('<div class="navbtn">', unsafe_allow_html=True)
-row1, row2 = st.columns(6), st.columns(6)
-for i, (icon, name) in enumerate(NAV):
-    col = row1[i] if i < 6 else row2[i - 6]
-    active = st.session_state["page"] == name
-    with col:
-        if st.button(f"{icon} {name}", key=f"nav_{name}", use_container_width=True,
-                     type="primary" if active else "secondary"):
-            _goto(name)
-            st.rerun()
-st.markdown('</div>', unsafe_allow_html=True)
-st.markdown("")
+# Compact single-row pill nav (sticky on phones): one short row instead of two
+# tall button rows, so each section's header + content start on the same
+# screen. The pill row scrolls horizontally; the active section is highlighted.
+_NAV_ICON = {name: icon for icon, name in NAV}
+_PILL_LABELS = [f"{icon} {name}" for icon, name in NAV]
+_PILL_TO_PAGE = {f"{icon} {name}": name for icon, name in NAV}
+
+_current_page = st.session_state["page"]
+# Keep the pill selection in sync when navigation happens somewhere other
+# than the pills (home cards, deep links): set the widget state BEFORE it
+# instantiates. The _pills_for tracker tells an external nav apart from the
+# user tapping a pill (in which case we must NOT overwrite their tap).
+if st.session_state.get("_pills_for") != _current_page:
+    st.session_state["nav_pills"] = f"{_NAV_ICON.get(_current_page, '')} {_current_page}".strip()
+    st.session_state["_pills_for"] = _current_page
+_choice = st.pills("Browse sections", options=_PILL_LABELS, key="nav_pills",
+                   label_visibility="collapsed", selection_mode="single",
+                   default=_PILL_LABELS[0])
+if _choice:
+    _chosen_page = _PILL_TO_PAGE.get(_choice)
+    if _chosen_page and _chosen_page != _current_page:
+        st.session_state["page"] = _chosen_page
+        st.session_state["_pills_for"] = _chosen_page
+        st.session_state["_jump"] = True
+        # No st.rerun(): the pill tap already triggered this rerun.
 
 if st.session_state.pop("_jump", False):
     # Jump to the top of the new section so a tap feels like a new page.
