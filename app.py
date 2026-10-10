@@ -861,7 +861,7 @@ function ePlayNote(){
     g.gain.exponentialRampToValueAtTime(0.0001,tm+1.4);
     o.connect(g); g.connect(ctx.destination);
     o.start(tm); o.stop(tm+1.5);
-    eH.textContent='listen\u2026 now sing it back';
+    eH.textContent=eMicOn?'listen\u2026 now sing it back':'\u2026 then tap MIC so I can grade you';
   }catch(err){ eH.textContent='audio blocked by browser'; }
 }
 document.getElementById('ePlay').addEventListener('click', ePlayNote);
