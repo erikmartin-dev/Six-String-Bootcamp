@@ -31,19 +31,26 @@ for (const d of densities) {
        `${ANDROID}/res/mipmap-${d}/ic_launcher_foreground.png`);
 }
 
-// 3. Background color (white, matches the icon)
+// 3. Background color (white, matches the icon) — only if not already defined
+// (the Capacitor template ships res/values/ic_launcher_background.xml;
+// defining it twice is a duplicate-resource build error)
 {
-  const dest = `${ANDROID}/res/values/colors.xml`;
-  let s = fs.existsSync(dest)
-    ? fs.readFileSync(dest, 'utf8')
-    : '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n</resources>\n';
-  if (!s.includes('name="ic_launcher_background"')) {
+  const valuesDir = `${ANDROID}/res/values`;
+  const alreadyDefined = fs.existsSync(valuesDir) && fs.readdirSync(valuesDir)
+    .filter(f => f.endsWith('.xml'))
+    .some(f => fs.readFileSync(path.join(valuesDir, f), 'utf8')
+      .includes('name="ic_launcher_background"'));
+  if (alreadyDefined) {
+    console.log('ic_launcher_background already defined — skipping colors.xml');
+  } else {
+    const dest = `${valuesDir}/colors.xml`;
+    let s = fs.existsSync(dest)
+      ? fs.readFileSync(dest, 'utf8')
+      : '<?xml version="1.0" encoding="utf-8"?>\n<resources>\n</resources>\n';
     s = s.replace('</resources>',
       '    <color name="ic_launcher_background">#FFFFFF</color>\n</resources>');
     fs.writeFileSync(dest, s);
     console.log('colors.xml merged: ic_launcher_background added');
-  } else {
-    console.log('colors.xml already has ic_launcher_background');
   }
 }
 
