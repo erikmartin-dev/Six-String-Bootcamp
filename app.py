@@ -2860,11 +2860,24 @@ st.markdown("")
 
 if st.session_state.pop("_jump", False):
     # Jump to the top of the new section so a tap feels like a new page.
+    # Scroll EVERY candidate container: Streamlit's actual scroller varies by
+    # version, and scrolling only the first match silently no-ops when that
+    # element isn't the scroller (users were left staring at the bottom of
+    # the new page). The page name is embedded so the iframe remounts and the
+    # script re-runs on every navigation.
+    _nav_token = str(st.session_state.get("page", "home")).replace("*/", "")
     components.html(
-        "<script>(function(){var d=window.parent.document;"
-        "var el=d.querySelector('[data-testid=\"stAppViewContainer\"]')"
-        "||d.querySelector('section.main')||d.documentElement;"
-        "if(el&&el.scrollTo){el.scrollTo(0,0);}else{window.parent.scrollTo(0,0);}})();</script>",
+        "<script>(function(){/*nav:" + _nav_token + "*/"
+        "var d=window.parent.document;"
+        "var sels=['[data-testid=\"stAppViewContainer\"]',"
+        "'[data-testid=\"stMain\"]','section.main','.main'];"
+        "for(var i=0;i<sels.length;i++){"
+        "var els=d.querySelectorAll(sels[i]);"
+        "for(var j=0;j<els.length;j++){"
+        "try{if(els[j].scrollTo){els[j].scrollTo(0,0);}else{els[j].scrollTop=0;}}catch(e){}}}"
+        "try{window.parent.scrollTo(0,0);}catch(e){}"
+        "try{d.documentElement.scrollTop=0;d.body.scrollTop=0;}catch(e){}"
+        "})();</script>",
         height=0, scrolling=False)
 
 PAGES.get(st.session_state["page"], page_home)()
