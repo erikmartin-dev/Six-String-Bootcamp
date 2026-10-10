@@ -2863,20 +2863,25 @@ if st.session_state.pop("_jump", False):
     # Scroll EVERY candidate container: Streamlit's actual scroller varies by
     # version, and scrolling only the first match silently no-ops when that
     # element isn't the scroller (users were left staring at the bottom of
-    # the new page). The page name is embedded so the iframe remounts and the
-    # script re-runs on every navigation.
+    # the new page). The scroll repeats on short delays because the old
+    # scroll offset can be restored after the rerun, undoing a single early
+    # scroll. The page name is embedded so the iframe remounts and the script
+    # re-runs on every navigation.
     _nav_token = str(st.session_state.get("page", "home")).replace("*/", "")
     components.html(
         "<script>(function(){/*nav:" + _nav_token + "*/"
         "var d=window.parent.document;"
         "var sels=['[data-testid=\"stAppViewContainer\"]',"
         "'[data-testid=\"stMain\"]','section.main','.main'];"
+        "function go(){"
         "for(var i=0;i<sels.length;i++){"
         "var els=d.querySelectorAll(sels[i]);"
         "for(var j=0;j<els.length;j++){"
         "try{if(els[j].scrollTo){els[j].scrollTo(0,0);}else{els[j].scrollTop=0;}}catch(e){}}}"
         "try{window.parent.scrollTo(0,0);}catch(e){}"
         "try{d.documentElement.scrollTop=0;d.body.scrollTop=0;}catch(e){}"
+        "}"
+        "go();setTimeout(go,600);setTimeout(go,1500);"
         "})();</script>",
         height=0, scrolling=False)
 
