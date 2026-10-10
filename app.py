@@ -567,42 +567,15 @@ def sgt_speak(text):
 
 
 def sgt_card(message, voice_text=None):
-    """Inline instructor card (no sidebar). Honors the instructor toggle."""
+    """Inline instructor tip — no portrait (Sgt. Martin lives in his bubble).
+    Honors the instructor toggle."""
     if not st.session_state.get("instructor_on", True):
         return
-    c1, c2 = st.columns([1, 4])
-    with c1:
-        if os.path.exists(SGT["portrait"]):
-            st.image(SGT["portrait"])
-    with c2:
-        st.markdown(f'<div class="sgt-speech">{message}</div>', unsafe_allow_html=True)
-        if voice_text:
-            audio = sgt_speak(voice_text)
-            if audio:
-                st.audio(audio, format="audio/mp3")
-
-
-def sgt_intro():
-    if st.session_state.get("enlisted"):
-        return True
-    # Compact entrance: the call-to-action must be visible on one phone
-    # screen with zero scrolling. Video is flavor below the button, not a gate.
-    st.markdown('<div class="hero" style="padding:10px 8px;margin-bottom:2px;">'
-                '<h1 style="font-size:1.35rem;margin:0;">\U0001F3B8 SIX-STRING BOOTCAMP</h1>'
-                '<p style="margin:2px 0 0;font-size:0.85rem;">Your instructor is about to report for duty.</p></div>',
-                unsafe_allow_html=True)
-    if st.button("Start", type="primary",
-                 use_container_width=True):
-        st.session_state["enlisted"] = True
-        st.rerun()
-    if os.path.exists(SGT["solo"]):
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            st.video(SGT["solo"])
-    st.caption("Sgt. Martin warming up. Sound on, recruit.")
-    if os.path.exists(SGT["welcome_speech"]):
-        st.audio(SGT["welcome_speech"])
-    return False
+    st.markdown(f'<div class="sgt-speech">{message}</div>', unsafe_allow_html=True)
+    if voice_text:
+        audio = sgt_speak(voice_text)
+        if audio:
+            st.audio(audio, format="audio/mp3")
 
 # ----------------------------------------------------------------------------
 # Tools: metronome + tuner (Web Audio, run fully in the browser)
@@ -2819,7 +2792,8 @@ if os.environ.get("SIXSTRING_SOCIAL") == "1":
     st.stop()
 
 
-# Router — top button nav, no sidebar
+# Router — top button nav, no sidebar. No entrance gate: the app opens
+# straight onto the nav + Home.
 # ----------------------------------------------------------------------------
 NAV = [
     ("🏠", "Home"), ("🎵", "Songs"), ("🔍", "Find Songs"), ("💾", "Saved"),
@@ -2834,9 +2808,6 @@ PAGES = {
     "Gear": page_gear, "Collection": page_collection,
     "Social": page_community,
 }
-
-if not sgt_intro():
-    st.stop()
 
 def _goto(page):
     """Navigate like a new page: switch section and jump to its top."""
